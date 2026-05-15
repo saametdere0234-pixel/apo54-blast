@@ -6,7 +6,7 @@ import { GameBoard } from "@/components/game/GameBoard";
 import { ScoreBoard } from "@/components/game/ScoreBoard";
 import { BlockInventory } from "@/components/game/BlockInventory";
 import { GameOverOverlay } from "@/components/game/GameOverOverlay";
-import { generateRandomBlock, BOARD_SIZE, BlockPiece, canFit } from "@/lib/game-constants";
+import { BOARD_SIZE, BlockPiece, canFit, generateUniqueInventory } from "@/lib/game-constants";
 import { Toaster } from "@/components/ui/toaster";
 import { Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -42,7 +42,6 @@ export default function Apo54BlastPage() {
     };
 
     const handlePointerUp = () => {
-      // Logic handled via GameBoard's global listener for better sync
       setDraggedBlock(null);
       setDragPosition(null);
     };
@@ -60,7 +59,7 @@ export default function Apo54BlastPage() {
   const startGame = () => {
     setBoard(Array(BOARD_SIZE).fill(null).map(() => Array(BOARD_SIZE).fill("empty")));
     setScore(0);
-    setInventory([generateRandomBlock(), generateRandomBlock(), generateRandomBlock()]);
+    setInventory(generateUniqueInventory(3));
     setGameState("playing");
     setDraggedBlock(null);
     setDragPosition(null);
@@ -72,7 +71,7 @@ export default function Apo54BlastPage() {
     
     const newInventory = inventory.filter(b => b.id !== blockId);
     if (newInventory.length === 0) {
-      const replenished = [generateRandomBlock(), generateRandomBlock(), generateRandomBlock()];
+      const replenished = generateUniqueInventory(3);
       setInventory(replenished);
       checkGameOver(newBoard, replenished);
     } else {

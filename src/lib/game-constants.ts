@@ -32,6 +32,18 @@ export const BLOCK_DEFS: Omit<BlockPiece, 'id'>[] = [
 
 export const BOARD_SIZE = 8;
 
+/**
+ * Generates a specified number of unique blocks.
+ * Ensures no two blocks in the returned array have the same name.
+ */
+export function generateUniqueInventory(count: number): BlockPiece[] {
+  const shuffled = [...BLOCK_DEFS].sort(() => 0.5 - Math.random());
+  return shuffled.slice(0, Math.min(count, shuffled.length)).map(def => ({
+    ...def,
+    id: Math.random().toString(36).substr(2, 9)
+  }));
+}
+
 export function generateRandomBlock(): BlockPiece {
   const def = BLOCK_DEFS[Math.floor(Math.random() * BLOCK_DEFS.length)];
   return {
