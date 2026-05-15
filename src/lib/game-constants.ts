@@ -1,3 +1,4 @@
+
 export type BlockShape = number[][];
 
 export interface BlockPiece {
@@ -39,4 +40,18 @@ export function generateRandomBlock(): BlockPiece {
 
 export function getBlockSize(shape: BlockShape): number {
   return shape.reduce((acc, row) => acc + row.reduce((rAcc, cell) => rAcc + cell, 0), 0);
+}
+
+export function canFit(currentBoard: string[][], shape: number[][], row: number, col: number): boolean {
+  for (let r = 0; r < shape.length; r++) {
+    for (let c = 0; c < shape[r].length; c++) {
+      if (shape[r][c] === 1) {
+        const targetR = row + r;
+        const targetC = col + c;
+        if (targetR < 0 || targetR >= BOARD_SIZE || targetC < 0 || targetC >= BOARD_SIZE) return false;
+        if (currentBoard[targetR][targetC] !== "empty") return false;
+      }
+    }
+  }
+  return true;
 }

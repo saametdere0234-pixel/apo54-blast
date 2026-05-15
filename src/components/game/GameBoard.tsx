@@ -1,64 +1,113 @@
 
 "use client";
 
-import React, { useState, useMemo, useCallback, useRef } from "react";
-import { BOARD_SIZE, BlockPiece, getBlockSize } from "@/lib/game-constants";
+import React, { useState, useMemo, useEffect, useRef } from "react";
+import { BOARD_SIZE, BlockPiece, getBlockSize, canFit } from "@/lib/game-constants";
 import { cn } from "@/lib/utils";
 import { AIStrategyButton } from "./AIStrategyButton";
 
 interface GameBoardProps {
   board: string[][];
   draggedBlock: BlockPiece | null;
+  dragPosition: { x: number; y: number } | null;
   onPlaced: (newBoard: string[][], points: number, blockId: string) => void;
-  onDragStart: (block: BlockPiece | null) => void;
 }
 
-export function GameBoard({ board, draggedBlock, onPlaced, onDragStart }: GameBoardProps) {
+export function GameBoard({ board, draggedBlock, dragPosition, onPlaced }: GameBoardProps) {
   const [hoverPos, setHoverPos] = useState<{ r: number; c: number } | null>(null);
   const gridRef = useRef<HTMLDivElement>(null);
 
-  // Calculate grid cell from mouse coordinates for smoother tracking
-  const handlePointerMove = useCallback((e: React.PointerEvent) => {
-    if (!draggedBlock || !gridRef.current) return;
+  // Sync hover position with global drag position
+  useEffect(() => {
+    if (!draggedBlock || !dragPosition || !gridRef.current) {
+      setHoverPos(null);
+      return;
+    }
 
     const rect = gridRef.current.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    const x = dragPosition.x - rect.left;
+    const y = dragPosition.y - rect.top;
 
-    // Use a small offset so the block top-left aligns better with pointer
-    const cellSize = rect.width / BOARD_SIZE;
-    const r = Math.floor(y / cellSize);
-    const c = Math.floor(x / cellSize);
+    // We calculate cell index based on where the cursor is, assuming cursor is center-ish of top-left cell
+    const cellWidth = rect.width / BOARD_SIZE;
+    const cellHeight = rect.height / BOARD_SIZE;
+    
+    // Offset to make the "pick up" feel natural (cursor at center of first block cell)
+    const r = Math.floor((y - cellHeight / 2) / cellHeight + 0.5);
+    const c = Math.floor((x - cellWidth / 2) / cellWidth + 0.5);
 
-    if (r >= 0 && r < BOARD_SIZE && c >= 0 && c < BOARD_SIZE) {
-      if (!hoverPos || hoverPos.r !== r || hoverPos.c !== c) {
-        setHoverPos({ r, c });
-      }
+    if (r >= 0 && r <= BOARD_SIZE - draggedBlock.shape.length && 
+        c >= 0 && c <= BOARD_SIZE - draggedBlock.shape[0].length) {
+      setHoverPos({ r, c });
     } else {
       setHoverPos(null);
     }
+  }, [draggedBlock, dragPosition]);
+
+  // Handle dropping locally but triggered by global pointerup (synced via state)
+  useEffect(() => {
+    const handleGlobalPointerUp = () => {
+      if (draggedBlock && hoverPos && isValidPlacement) {
+        handlePlacement();
+      }
+    };
+
+    if (draggedBlock) {
+      window.addEventListener("pointerup", handleGlobalPointerUp);
+    }
+    return () => window.removeEventListener("pointerup", handleGlobalPointerUp);
   }, [draggedBlock, hoverPos]);
 
-  const canPlace = useMemo(() => {
+  const isValidPlacement = useMemo(() => {
     if (!draggedBlock || !hoverPos) return false;
-    const { r: row, c: col } = hoverPos;
+    return canFit(board, draggedBlock.shape, hoverPos.r, hoverPos.c);
+  }, [board, draggedBlock, hoverPos]);
+
+  const handlePlacement = () => {
+    if (!draggedBlock || !hoverPos) return;
+
+    const { r: startRow, c: startCol } = hoverPos;
+    const newBoard = board.map(row => [...row]);
     const shape = draggedBlock.shape;
     
     for (let r = 0; r < shape.length; r++) {
       for (let c = 0; c < shape[r].length; c++) {
         if (shape[r][c] === 1) {
-          const targetR = row + r;
-          const targetC = col + c;
-          if (targetR < 0 || targetR >= BOARD_SIZE || targetC < 0 || targetC >= BOARD_SIZE) return false;
-          if (board[targetR][targetC] !== "empty") return false;
+          newBoard[startRow + r][startCol + c] = draggedBlock.color;
         }
       }
     }
-    return true;
-  }, [board, draggedBlock, hoverPos]);
+
+    const rowsToClear: number[] = [];
+    const colsToClear: number[] = [];
+    for (let r = 0; r < BOARD_SIZE; r++) {
+      if (newBoard[r].every(cell => cell !== "empty")) rowsToClear.push(r);
+    }
+    for (let c = 0; c < BOARD_SIZE; c++) {
+      let full = true;
+      for (let r = 0; r < BOARD_SIZE; r++) {
+        if (newBoard[r][c] === "empty") {
+          full = false;
+          break;
+        }
+      }
+      if (full) colsToClear.push(c);
+    }
+
+    let points = getBlockSize(draggedBlock.shape);
+    const linesCleared = rowsToClear.length + colsToClear.length;
+    if (linesCleared > 0) {
+      points += linesCleared * 10 * linesCleared;
+      rowsToClear.forEach(r => newBoard[r] = Array(BOARD_SIZE).fill("empty"));
+      colsToClear.forEach(c => newBoard.forEach(r => r[c] = "empty"));
+    }
+
+    onPlaced(newBoard, points, draggedBlock.id);
+    setHoverPos(null);
+  };
 
   const potentialClears = useMemo(() => {
-    if (!draggedBlock || !hoverPos || !canPlace) return { rows: [], cols: [] };
+    if (!draggedBlock || !hoverPos || !isValidPlacement) return { rows: [], cols: [] };
     
     const tempBoard = board.map(row => [...row]);
     const { r: row, c: col } = hoverPos;
@@ -91,51 +140,10 @@ export function GameBoard({ board, draggedBlock, onPlaced, onDragStart }: GameBo
     }
 
     return { rows: rowsToClear, cols: colsToClear };
-  }, [board, draggedBlock, hoverPos, canPlace]);
-
-  const handleDrop = useCallback(() => {
-    if (draggedBlock && hoverPos && canPlace) {
-      const { r: row, c: col } = hoverPos;
-      const newBoard = board.map(r => [...r]);
-      const shape = draggedBlock.shape;
-      
-      for (let r = 0; r < shape.length; r++) {
-        for (let c = 0; c < shape[r].length; c++) {
-          if (shape[r][c] === 1) {
-            newBoard[row + r][col + c] = draggedBlock.color;
-          }
-        }
-      }
-
-      const rowsToClear: number[] = [];
-      const colsToClear: number[] = [];
-      for (let r = 0; r < BOARD_SIZE; r++) {
-        if (newBoard[r].every(cell => cell !== "empty")) rowsToClear.push(r);
-      }
-      for (let c = 0; c < BOARD_SIZE; c++) {
-        if (newBoard.every(r => r[c] !== "empty")) colsToClear.push(c);
-      }
-
-      let points = getBlockSize(draggedBlock.shape);
-      const linesCleared = rowsToClear.length + colsToClear.length;
-      if (linesCleared > 0) {
-        points += linesCleared * 10 * linesCleared;
-        rowsToClear.forEach(r => newBoard[r] = Array(BOARD_SIZE).fill("empty"));
-        colsToClear.forEach(c => newBoard.forEach(r => r[c] = "empty"));
-      }
-
-      onPlaced(newBoard, points, draggedBlock.id);
-    }
-    setHoverPos(null);
-  }, [board, draggedBlock, hoverPos, canPlace, onPlaced]);
+  }, [board, draggedBlock, hoverPos, isValidPlacement]);
 
   return (
-    <div 
-      className="relative select-none" 
-      onPointerUp={handleDrop}
-      onPointerMove={handlePointerMove}
-      onPointerLeave={() => setHoverPos(null)}
-    >
+    <div className="relative group/board">
       <div 
         ref={gridRef}
         className="grid grid-cols-8 gap-[3px] p-3 bg-card/60 border border-white/10 rounded-xl shadow-2xl backdrop-blur-sm relative"
@@ -155,12 +163,12 @@ export function GameBoard({ board, draggedBlock, onPlaced, onDragStart }: GameBo
                 className={cn(
                   "w-9 h-9 sm:w-11 sm:h-11 md:w-14 md:h-14 rounded-md transition-all duration-150 border-[0.5px] border-white/5",
                   cell === "empty" ? "bg-white/[0.03]" : "blast-shadow",
-                  isHovered && canPlace && "opacity-60",
-                  isHovered && !canPlace && "bg-destructive/30 border-destructive/50",
+                  isHovered && isValidPlacement && "opacity-60",
+                  isHovered && !isValidPlacement && "bg-destructive/30 border-destructive/50",
                   isAboutToClear && "animate-flash brightness-125 z-10"
                 )}
                 style={{ 
-                  backgroundColor: cell !== "empty" ? cell : (isHovered && canPlace ? draggedBlock?.color : undefined)
+                  backgroundColor: cell !== "empty" ? cell : (isHovered && isValidPlacement ? draggedBlock?.color : undefined)
                 }}
               />
             );
