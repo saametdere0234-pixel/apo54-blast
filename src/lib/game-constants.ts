@@ -26,6 +26,8 @@ export const BLOCK_DEFS: Omit<BlockPiece, 'id'>[] = [
   { name: 'L-Big-Opp', color: '#FF9999', shape: [[0, 0, 1], [0, 0, 1], [1, 1, 1]] },
   { name: 'Z', color: '#99FF99', shape: [[1, 1, 0], [0, 1, 1]] },
   { name: 'Z-Opp', color: '#99FF99', shape: [[0, 1, 1], [1, 1, 0]] },
+  { name: 'Plus', color: '#FFFFFF', shape: [[0, 1, 0], [1, 1, 1], [0, 1, 0]] },
+  { name: 'Half-Plus', color: '#FFA500', shape: [[1, 1, 1], [0, 1, 0]] },
 ];
 
 export const BOARD_SIZE = 8;
