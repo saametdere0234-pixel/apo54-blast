@@ -20,6 +20,8 @@ export const BLOCK_DEFS: Omit<BlockPiece, 'id'>[] = [
   { name: '1x5', color: '#66FFFF', shape: [[1], [1], [1], [1], [1]] },
   { name: '2x2', color: '#66B3FF', shape: [[1, 1], [1, 1]] },
   { name: '3x3', color: '#B366FF', shape: [[1, 1, 1], [1, 1, 1], [1, 1, 1]] },
+  { name: '3x2', color: '#44CCFF', shape: [[1, 1, 1], [1, 1, 1]] },
+  { name: '2x3', color: '#44CCFF', shape: [[1, 1], [1, 1], [1, 1]] },
   { name: 'L-Small', color: '#FF66B3', shape: [[1, 0], [1, 1]] },
   { name: 'L-Small-Opp', color: '#FF66B3', shape: [[0, 1], [1, 1]] },
   { name: 'L-Big', color: '#FF9999', shape: [[1, 0, 0], [1, 0, 0], [1, 1, 1]] },
