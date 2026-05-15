@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
@@ -49,7 +50,7 @@ export default function Apo54BlastPage() {
     };
 
     if (draggedBlock) {
-      window.addEventListener("pointermove", handlePointerMove);
+      window.addEventListener("pointermove", handlePointerMove, { passive: true });
       window.addEventListener("pointerup", handlePointerUp);
     }
     return () => {
@@ -160,29 +161,27 @@ export default function Apo54BlastPage() {
         <GameOverOverlay score={score} highScore={highScore} onRestart={startGame} />
       )}
       
-      {/* Visual Drag Preview - Offset slightly above the cursor/finger */}
+      {/* Visual Drag Preview - Sync size with GameBoard cells */}
       {draggedBlock && dragPosition && (
         <div 
-          className="fixed pointer-events-none z-[100] transform -translate-x-1/2 -translate-y-[120%] opacity-100 transition-transform duration-75 scale-110"
+          className="fixed pointer-events-none z-[100] transform -translate-x-1/2 -translate-y-[130%] opacity-100"
           style={{ 
             left: dragPosition.x, 
             top: dragPosition.y 
           }}
         >
-          <div className="flex flex-col gap-[2px]">
+          <div className="flex flex-col gap-[3px]">
             {draggedBlock.shape.map((row, rIdx) => (
-              <div key={rIdx} className="flex gap-[2px]">
+              <div key={rIdx} className="flex gap-[3px]">
                 {row.map((cell, cIdx) => (
                   <div
                     key={cIdx}
-                    className="rounded-md shadow-2xl"
+                    className="w-9 h-9 sm:w-11 sm:h-11 md:w-14 md:h-14 rounded-md shadow-2xl transition-none"
                     style={{ 
-                      width: 44,
-                      height: 44,
                       backgroundColor: cell === 1 ? draggedBlock.color : "transparent",
                       opacity: cell === 1 ? 1 : 0,
-                      boxShadow: cell === 1 ? `0 0 30px ${draggedBlock.color}` : 'none',
-                      border: cell === 1 ? '1px solid rgba(255,255,255,0.2)' : 'none'
+                      boxShadow: cell === 1 ? `0 0 40px ${draggedBlock.color}` : 'none',
+                      border: cell === 1 ? '1px solid rgba(255,255,255,0.4)' : 'none'
                     }}
                   />
                 ))}

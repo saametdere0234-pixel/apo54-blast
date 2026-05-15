@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useMemo, useEffect, useRef } from "react";
@@ -27,15 +28,20 @@ export function GameBoard({ board, draggedBlock, dragPosition, onPlaced }: GameB
     const cellWidth = rect.width / BOARD_SIZE;
     const cellHeight = rect.height / BOARD_SIZE;
 
-    // Use a fixed offset for detection that matches the visual offset in page.tsx
-    // The visual offset is roughly 120% of the block size above the cursor
-    const detectionOffset = -100; 
+    // Use a vertical offset that matches the visual offset in page.tsx (-130%)
+    const blockHeightInPixels = cellHeight * draggedBlock.shape.length;
+    const detectionOffset = -(blockHeightInPixels * 1.3);
 
     const x = dragPosition.x - rect.left;
     const y = dragPosition.y + detectionOffset - rect.top;
 
-    const r = Math.floor(y / cellHeight);
-    const c = Math.floor(x / cellWidth);
+    // Center the detection point on the block shape
+    const blockWidthInPixels = cellWidth * draggedBlock.shape[0].length;
+    const adjustedX = x - (blockWidthInPixels / 2) + (cellWidth / 2);
+    const adjustedY = y - (blockHeightInPixels / 2) + (cellHeight / 2);
+
+    const r = Math.round(adjustedY / cellHeight);
+    const c = Math.round(adjustedX / cellWidth);
 
     if (r >= 0 && r <= BOARD_SIZE - draggedBlock.shape.length && 
         c >= 0 && c <= BOARD_SIZE - draggedBlock.shape[0].length) {
@@ -106,10 +112,11 @@ export function GameBoard({ board, draggedBlock, dragPosition, onPlaced }: GameB
     setHoverPos(null);
   };
 
-  const potentialClears = useMemo(() => {
+  const placementPreview = useMemo(() => {
     if (!draggedBlock || !hoverPos || !canFit(board, draggedBlock.shape, hoverPos.r, hoverPos.c)) 
-      return { rows: [], cols: [] };
+      return { ghostCells: [], rowsToClear: [], colsToClear: [] };
     
+    const ghostCells: {r: number, c: number}[] = [];
     const tempBoard = board.map(row => [...row]);
     const { r: row, c: col } = hoverPos;
     const shape = draggedBlock.shape;
@@ -118,6 +125,7 @@ export function GameBoard({ board, draggedBlock, dragPosition, onPlaced }: GameB
       for (let c = 0; c < shape[r].length; c++) {
         if (shape[r][c] === 1) {
           tempBoard[row + r][col + c] = draggedBlock.color;
+          ghostCells.push({ r: row + r, c: col + c });
         }
       }
     }
@@ -138,7 +146,7 @@ export function GameBoard({ board, draggedBlock, dragPosition, onPlaced }: GameB
       if (full) colsToClear.push(c);
     }
 
-    return { rows: rowsToClear, cols: colsToClear };
+    return { ghostCells, rowsToClear, colsToClear };
   }, [board, draggedBlock, hoverPos]);
 
   return (
@@ -149,18 +157,22 @@ export function GameBoard({ board, draggedBlock, dragPosition, onPlaced }: GameB
       >
         {board.map((row, rIdx) => 
           row.map((cell, cIdx) => {
-            const isAboutToClear = potentialClears.rows.includes(rIdx) || potentialClears.cols.includes(cIdx);
+            const isGhost = placementPreview.ghostCells.some(gc => gc.r === rIdx && gc.c === cIdx);
+            const isAboutToClear = placementPreview.rowsToClear.includes(rIdx) || placementPreview.colsToClear.includes(cIdx);
 
             return (
               <div
                 key={`${rIdx}-${cIdx}`}
                 className={cn(
                   "w-9 h-9 sm:w-11 sm:h-11 md:w-14 md:h-14 rounded-md transition-all duration-150 border-[0.5px] border-white/5",
-                  cell === "empty" ? "bg-white/[0.03]" : "blast-shadow",
-                  isAboutToClear && "animate-flash brightness-125 z-10"
+                  cell === "empty" && !isGhost ? "bg-white/[0.03]" : "blast-shadow",
+                  isAboutToClear && "animate-flash brightness-150 z-10",
+                  isGhost && "brightness-110"
                 )}
                 style={{ 
-                  backgroundColor: cell !== "empty" ? cell : undefined
+                  backgroundColor: cell !== "empty" ? cell : (isGhost ? draggedBlock?.color : undefined),
+                  opacity: isGhost && !isAboutToClear ? 0.5 : 1,
+                  boxShadow: isGhost ? `0 0 20px ${draggedBlock?.color}44` : undefined
                 }}
               />
             );
