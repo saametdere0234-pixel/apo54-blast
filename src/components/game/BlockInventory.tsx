@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -73,26 +74,26 @@ export function BlockInventory({ blocks, onDragStart, board }: BlockInventoryPro
             key={block.id}
             onPointerDown={() => handleStartDrag(block)}
             className={cn(
-              "p-6 rounded-2xl cursor-grab active:cursor-grabbing transition-all duration-300 flex items-center justify-center transform hover:bg-white/5",
+              "p-4 rounded-2xl cursor-grab active:cursor-grabbing transition-all duration-300 flex items-center justify-center transform hover:bg-white/5",
               disabled && "opacity-20 grayscale cursor-not-allowed pointer-events-none",
               isDragging && "opacity-0"
             )}
           >
-            <BlockPreview shape={block.shape} color={block.color} size={24} />
+            <BlockPreview shape={block.shape} color={block.color} size={20} />
           </div>
         );
       })}
 
       {activeDragId && (
         <div 
-          className="fixed pointer-events-none z-50 transform -translate-x-1/2 -translate-y-1/2 opacity-90"
+          className="fixed pointer-events-none z-50 transform -translate-x-1/2 -translate-y-1/2 opacity-90 transition-transform duration-75"
           style={{ left: mousePos.x, top: mousePos.y }}
         >
           {blocks.find(b => b.id === activeDragId) && (
             <BlockPreview 
               shape={blocks.find(b => b.id === activeDragId)!.shape} 
               color={blocks.find(b => b.id === activeDragId)!.color} 
-              size={36} 
+              size={32} 
             />
           )}
         </div>
@@ -109,12 +110,13 @@ function BlockPreview({ shape, color, size }: { shape: number[][], color: string
           {row.map((cell, cIdx) => (
             <div
               key={cIdx}
-              className="rounded-[3px] blast-shadow"
+              className="rounded-[4px] shadow-sm"
               style={{ 
                 width: size,
                 height: size,
                 backgroundColor: cell === 1 ? color : "transparent",
-                opacity: cell === 1 ? 1 : 0
+                opacity: cell === 1 ? 1 : 0,
+                boxShadow: cell === 1 ? `0 0 15px ${color}44` : 'none'
               }}
             />
           ))}

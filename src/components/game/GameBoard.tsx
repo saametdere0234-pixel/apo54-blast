@@ -1,6 +1,7 @@
+
 "use client";
 
-import React, { useState, useMemo, useCallback } from "react";
+import React, { useState, useMemo, useCallback, useRef } from "react";
 import { BOARD_SIZE, BlockPiece, getBlockSize } from "@/lib/game-constants";
 import { cn } from "@/lib/utils";
 import { AIStrategyButton } from "./AIStrategyButton";
@@ -14,6 +15,29 @@ interface GameBoardProps {
 
 export function GameBoard({ board, draggedBlock, onPlaced, onDragStart }: GameBoardProps) {
   const [hoverPos, setHoverPos] = useState<{ r: number; c: number } | null>(null);
+  const gridRef = useRef<HTMLDivElement>(null);
+
+  // Calculate grid cell from mouse coordinates for smoother tracking
+  const handlePointerMove = useCallback((e: React.PointerEvent) => {
+    if (!draggedBlock || !gridRef.current) return;
+
+    const rect = gridRef.current.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    // Use a small offset so the block top-left aligns better with pointer
+    const cellSize = rect.width / BOARD_SIZE;
+    const r = Math.floor(y / cellSize);
+    const c = Math.floor(x / cellSize);
+
+    if (r >= 0 && r < BOARD_SIZE && c >= 0 && c < BOARD_SIZE) {
+      if (!hoverPos || hoverPos.r !== r || hoverPos.c !== c) {
+        setHoverPos({ r, c });
+      }
+    } else {
+      setHoverPos(null);
+    }
+  }, [draggedBlock, hoverPos]);
 
   const canPlace = useMemo(() => {
     if (!draggedBlock || !hoverPos) return false;
@@ -106,10 +130,15 @@ export function GameBoard({ board, draggedBlock, onPlaced, onDragStart }: GameBo
   }, [board, draggedBlock, hoverPos, canPlace, onPlaced]);
 
   return (
-    <div className="relative select-none" onPointerUp={handleDrop}>
+    <div 
+      className="relative select-none" 
+      onPointerUp={handleDrop}
+      onPointerMove={handlePointerMove}
+      onPointerLeave={() => setHoverPos(null)}
+    >
       <div 
+        ref={gridRef}
         className="grid grid-cols-8 gap-[3px] p-3 bg-card/60 border border-white/10 rounded-xl shadow-2xl backdrop-blur-sm relative"
-        onPointerLeave={() => setHoverPos(null)}
       >
         {board.map((row, rIdx) => 
           row.map((cell, cIdx) => {
@@ -133,7 +162,6 @@ export function GameBoard({ board, draggedBlock, onPlaced, onDragStart }: GameBo
                 style={{ 
                   backgroundColor: cell !== "empty" ? cell : (isHovered && canPlace ? draggedBlock?.color : undefined)
                 }}
-                onPointerEnter={() => draggedBlock && setHoverPos({ r: rIdx, c: cIdx })}
               />
             );
           })
@@ -141,7 +169,7 @@ export function GameBoard({ board, draggedBlock, onPlaced, onDragStart }: GameBo
       </div>
       
       <div className="absolute -right-20 top-0 hidden lg:block">
-        <AIStrategyButton boardState={board} inventory={[]} />
+        <AIStrategyButton boardState={board} />
       </div>
     </div>
   );
