@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
@@ -6,10 +5,10 @@ import { GameBoard } from "@/components/game/GameBoard";
 import { ScoreBoard } from "@/components/game/ScoreBoard";
 import { BlockInventory } from "@/components/game/BlockInventory";
 import { GameOverOverlay } from "@/components/game/GameOverOverlay";
-import { Button } from "@/components/ui/button";
-import { Play, Zap } from "lucide-react";
 import { generateRandomBlock, BOARD_SIZE, BlockPiece, canFit } from "@/lib/game-constants";
 import { Toaster } from "@/components/ui/toaster";
+import { Zap } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 export default function Apo54BlastPage() {
   const [gameState, setGameState] = useState<"menu" | "playing" | "gameover">("menu");
@@ -34,7 +33,6 @@ export default function Apo54BlastPage() {
     }
   }, [score, highScore]);
 
-  // Global pointer move listener for smooth drag tracking
   useEffect(() => {
     const handlePointerMove = (e: PointerEvent) => {
       if (draggedBlock) {
@@ -43,13 +41,11 @@ export default function Apo54BlastPage() {
     };
 
     const handlePointerUp = () => {
-      // Logic for dropping is handled in the GameBoard component via the dragPosition
-      // But we need to clean up the drag state here too.
-      // We use a small timeout to let the GameBoard handle the placement first
+      // Small timeout to allow GameBoard to register drop via its own listener
       setTimeout(() => {
         setDraggedBlock(null);
         setDragPosition(null);
-      }, 0);
+      }, 50);
     };
 
     if (draggedBlock) {
@@ -156,7 +152,6 @@ export default function Apo54BlastPage() {
               setDraggedBlock(block);
               setDragPosition(pos);
             }}
-            board={board}
           />
         </div>
       </div>
@@ -165,11 +160,14 @@ export default function Apo54BlastPage() {
         <GameOverOverlay score={score} highScore={highScore} onRestart={startGame} />
       )}
       
-      {/* Visual Drag Preview at Global Level */}
+      {/* Visual Drag Preview - Offset slightly above the cursor/finger */}
       {draggedBlock && dragPosition && (
         <div 
-          className="fixed pointer-events-none z-[100] transform -translate-x-1/2 -translate-y-1/2 opacity-90 transition-transform duration-75 scale-110"
-          style={{ left: dragPosition.x, top: dragPosition.y }}
+          className="fixed pointer-events-none z-[100] transform -translate-x-1/2 -translate-y-[120%] opacity-100 transition-transform duration-75 scale-110"
+          style={{ 
+            left: dragPosition.x, 
+            top: dragPosition.y 
+          }}
         >
           <div className="flex flex-col gap-[2px]">
             {draggedBlock.shape.map((row, rIdx) => (
@@ -177,13 +175,14 @@ export default function Apo54BlastPage() {
                 {row.map((cell, cIdx) => (
                   <div
                     key={cIdx}
-                    className="rounded-md shadow-lg"
+                    className="rounded-md shadow-2xl"
                     style={{ 
                       width: 44,
                       height: 44,
                       backgroundColor: cell === 1 ? draggedBlock.color : "transparent",
                       opacity: cell === 1 ? 1 : 0,
-                      boxShadow: cell === 1 ? `0 0 25px ${draggedBlock.color}88` : 'none'
+                      boxShadow: cell === 1 ? `0 0 30px ${draggedBlock.color}` : 'none',
+                      border: cell === 1 ? '1px solid rgba(255,255,255,0.2)' : 'none'
                     }}
                   />
                 ))}
