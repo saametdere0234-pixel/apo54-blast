@@ -42,11 +42,9 @@ export default function Apo54BlastPage() {
     };
 
     const handlePointerUp = () => {
-      // Small timeout to allow GameBoard to register drop via its own listener
-      setTimeout(() => {
-        setDraggedBlock(null);
-        setDragPosition(null);
-      }, 50);
+      // Logic handled via GameBoard's global listener for better sync
+      setDraggedBlock(null);
+      setDragPosition(null);
     };
 
     if (draggedBlock) {
@@ -159,36 +157,6 @@ export default function Apo54BlastPage() {
 
       {gameState === "gameover" && (
         <GameOverOverlay score={score} highScore={highScore} onRestart={startGame} />
-      )}
-      
-      {/* Visual Drag Preview - Sync size with GameBoard cells */}
-      {draggedBlock && dragPosition && (
-        <div 
-          className="fixed pointer-events-none z-[100] transform -translate-x-1/2 -translate-y-[130%] opacity-100"
-          style={{ 
-            left: dragPosition.x, 
-            top: dragPosition.y 
-          }}
-        >
-          <div className="flex flex-col gap-[3px]">
-            {draggedBlock.shape.map((row, rIdx) => (
-              <div key={rIdx} className="flex gap-[3px]">
-                {row.map((cell, cIdx) => (
-                  <div
-                    key={cIdx}
-                    className="w-9 h-9 sm:w-11 sm:h-11 md:w-14 md:h-14 rounded-md shadow-2xl transition-none"
-                    style={{ 
-                      backgroundColor: cell === 1 ? draggedBlock.color : "transparent",
-                      opacity: cell === 1 ? 1 : 0,
-                      boxShadow: cell === 1 ? `0 0 40px ${draggedBlock.color}` : 'none',
-                      border: cell === 1 ? '1px solid rgba(255,255,255,0.4)' : 'none'
-                    }}
-                  />
-                ))}
-              </div>
-            ))}
-          </div>
-        </div>
       )}
       <Toaster />
     </main>

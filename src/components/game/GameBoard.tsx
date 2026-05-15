@@ -17,7 +17,13 @@ export function GameBoard({ board, draggedBlock, dragPosition, onPlaced }: GameB
   const [hoverPos, setHoverPos] = useState<{ r: number; c: number } | null>(null);
   const gridRef = useRef<HTMLDivElement>(null);
 
-  // Sync internal hover calculations based on global drag position
+  // Use a ref for the latest hoverPos to ensure the pointerup closure is accurate
+  const hoverPosRef = useRef(hoverPos);
+  useEffect(() => {
+    hoverPosRef.current = hoverPos;
+  }, [hoverPos]);
+
+  // Handle global coordinate tracking
   useEffect(() => {
     if (!draggedBlock || !dragPosition || !gridRef.current) {
       setHoverPos(null);
@@ -28,21 +34,17 @@ export function GameBoard({ board, draggedBlock, dragPosition, onPlaced }: GameB
     const cellWidth = rect.width / BOARD_SIZE;
     const cellHeight = rect.height / BOARD_SIZE;
 
-    // Use a vertical offset that matches the visual offset in page.tsx (-130%)
-    const blockHeightInPixels = cellHeight * draggedBlock.shape.length;
-    const detectionOffset = -(blockHeightInPixels * 1.3);
-
+    // Detection Point: Center of the block shape based on cursor
+    // Since we removed the floating block, we detect relative to where the cursor is, 
+    // applying a slight vertical offset so the user can see the board under their finger.
     const x = dragPosition.x - rect.left;
-    const y = dragPosition.y + detectionOffset - rect.top;
+    const y = dragPosition.y - rect.top - (cellHeight * 2); // Offset upwards by 2 cells for visibility
 
-    // Center the detection point on the block shape
-    const blockWidthInPixels = cellWidth * draggedBlock.shape[0].length;
-    const adjustedX = x - (blockWidthInPixels / 2) + (cellWidth / 2);
-    const adjustedY = y - (blockHeightInPixels / 2) + (cellHeight / 2);
+    // Align detection to the top-left of the block
+    const r = Math.floor(y / cellHeight);
+    const c = Math.floor(x / cellWidth);
 
-    const r = Math.round(adjustedY / cellHeight);
-    const c = Math.round(adjustedX / cellWidth);
-
+    // Ensure block top-left stays within valid board bounds
     if (r >= 0 && r <= BOARD_SIZE - draggedBlock.shape.length && 
         c >= 0 && c <= BOARD_SIZE - draggedBlock.shape[0].length) {
       setHoverPos({ r, c });
@@ -50,12 +52,6 @@ export function GameBoard({ board, draggedBlock, dragPosition, onPlaced }: GameB
       setHoverPos(null);
     }
   }, [draggedBlock, dragPosition]);
-
-  // Use a ref for the latest hoverPos to ensure the pointerup closure is accurate
-  const hoverPosRef = useRef(hoverPos);
-  useEffect(() => {
-    hoverPosRef.current = hoverPos;
-  }, [hoverPos]);
 
   useEffect(() => {
     const handleGlobalPointerUp = () => {
@@ -167,12 +163,13 @@ export function GameBoard({ board, draggedBlock, dragPosition, onPlaced }: GameB
                   "w-9 h-9 sm:w-11 sm:h-11 md:w-14 md:h-14 rounded-md transition-all duration-150 border-[0.5px] border-white/5",
                   cell === "empty" && !isGhost ? "bg-white/[0.03]" : "blast-shadow",
                   isAboutToClear && "animate-flash brightness-150 z-10",
-                  isGhost && "brightness-110"
+                  isGhost && "brightness-125 z-20"
                 )}
                 style={{ 
                   backgroundColor: cell !== "empty" ? cell : (isGhost ? draggedBlock?.color : undefined),
-                  opacity: isGhost && !isAboutToClear ? 0.5 : 1,
-                  boxShadow: isGhost ? `0 0 20px ${draggedBlock?.color}44` : undefined
+                  opacity: isGhost && !isAboutToClear ? 0.8 : 1,
+                  boxShadow: isGhost ? `0 0 30px ${draggedBlock?.color}` : undefined,
+                  transform: isGhost ? 'scale(1.02)' : 'none'
                 }}
               />
             );
