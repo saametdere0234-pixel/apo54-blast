@@ -10,7 +10,6 @@ import { BOARD_SIZE, BlockPiece, canFit, generateStrategicInventory } from "@/li
 import { Toaster } from "@/components/ui/toaster";
 import { Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useToast } from "@/hooks/use-toast";
 
 export default function Apo54BlastPage() {
   const [gameState, setGameState] = useState<"menu" | "playing" | "gameover">("menu");
@@ -22,7 +21,6 @@ export default function Apo54BlastPage() {
   const [inventory, setInventory] = useState<BlockPiece[]>([]);
   const [draggedBlock, setDraggedBlock] = useState<BlockPiece | null>(null);
   const [dragPosition, setDragPosition] = useState<{ x: number; y: number } | null>(null);
-  const { toast } = useToast();
 
   useEffect(() => {
     const saved = localStorage.getItem("apo54-blast-highscore");
@@ -96,27 +94,7 @@ export default function Apo54BlastPage() {
     });
 
     if (!canPlaceAny) {
-      // Emergency Savior Protocol: If blocked, try to give savior blocks
-      const saviorInventory = generateStrategicInventory(currentBoard, currentInventory.length);
-      const stillBlocked = saviorInventory.every(block => {
-        for (let r = 0; r < BOARD_SIZE; r++) {
-          for (let c = 0; c < BOARD_SIZE; c++) {
-            if (canFit(currentBoard, block.shape, r, c)) return false;
-          }
-        }
-        return true;
-      });
-
-      if (stillBlocked) {
-        setGameState("gameover");
-      } else {
-        setInventory(saviorInventory);
-        toast({
-          title: "EMERGENCY BLAST!",
-          description: "New blocks provided to break the block!",
-          className: "bg-primary text-primary-foreground border-none font-bold italic",
-        });
-      }
+      setGameState("gameover");
     }
   };
 
