@@ -34,15 +34,13 @@ export function GameBoard({ board, draggedBlock, dragPosition, onPlaced }: GameB
     const cellWidth = rect.width / BOARD_SIZE;
     const cellHeight = rect.height / BOARD_SIZE;
 
-    // Detection Point: Center of the block shape based on cursor
-    // Since we removed the floating block, we detect relative to where the cursor is, 
-    // applying a slight vertical offset so the user can see the board under their finger.
-    const x = dragPosition.x - rect.left;
-    const y = dragPosition.y - rect.top - (cellHeight * 2); // Offset upwards by 2 cells for visibility
+    // Detect grid position based on cursor, with a slight vertical offset for visibility
+    const x = dragPosition.x - rect.left - (draggedBlock.shape[0].length * cellWidth / 2);
+    const y = dragPosition.y - rect.top - (draggedBlock.shape.length * cellHeight / 2) - (cellHeight * 1.5);
 
     // Align detection to the top-left of the block
-    const r = Math.floor(y / cellHeight);
-    const c = Math.floor(x / cellWidth);
+    const r = Math.round(y / cellHeight);
+    const c = Math.round(x / cellWidth);
 
     // Ensure block top-left stays within valid board bounds
     if (r >= 0 && r <= BOARD_SIZE - draggedBlock.shape.length && 
@@ -109,7 +107,7 @@ export function GameBoard({ board, draggedBlock, dragPosition, onPlaced }: GameB
   };
 
   const placementPreview = useMemo(() => {
-    if (!draggedBlock || !hoverPos || !canFit(board, draggedBlock.shape, hoverPos.r, hoverPos.c)) 
+    if (!draggedBlock || !hoverPos) 
       return { ghostCells: [], rowsToClear: [], colsToClear: [] };
     
     const ghostCells: {r: number, c: number}[] = [];
@@ -117,29 +115,37 @@ export function GameBoard({ board, draggedBlock, dragPosition, onPlaced }: GameB
     const { r: row, c: col } = hoverPos;
     const shape = draggedBlock.shape;
 
+    // Previews are always visible if within bounds, regardless of fit
     for (let r = 0; r < shape.length; r++) {
       for (let c = 0; c < shape[r].length; c++) {
         if (shape[r][c] === 1) {
-          tempBoard[row + r][col + c] = draggedBlock.color;
-          ghostCells.push({ r: row + r, c: col + c });
+          const targetR = row + r;
+          const targetC = col + c;
+          ghostCells.push({ r: targetR, c: targetC });
+          if (targetR >= 0 && targetR < BOARD_SIZE && targetC >= 0 && targetC < BOARD_SIZE) {
+            tempBoard[targetR][targetC] = draggedBlock.color;
+          }
         }
       }
     }
 
     const rowsToClear: number[] = [];
     const colsToClear: number[] = [];
-    for (let r = 0; r < BOARD_SIZE; r++) {
-      if (tempBoard[r].every(cell => cell !== "empty")) rowsToClear.push(r);
-    }
-    for (let c = 0; c < BOARD_SIZE; c++) {
-      let full = true;
+    // Only show clear effects if the placement is actually valid
+    if (canFit(board, shape, row, col)) {
       for (let r = 0; r < BOARD_SIZE; r++) {
-        if (tempBoard[r][c] === "empty") {
-          full = false;
-          break;
-        }
+        if (tempBoard[r].every(cell => cell !== "empty")) rowsToClear.push(r);
       }
-      if (full) colsToClear.push(c);
+      for (let c = 0; c < BOARD_SIZE; c++) {
+        let full = true;
+        for (let r = 0; r < BOARD_SIZE; r++) {
+          if (tempBoard[r][c] === "empty") {
+            full = false;
+            break;
+          }
+        }
+        if (full) colsToClear.push(c);
+      }
     }
 
     return { ghostCells, rowsToClear, colsToClear };
@@ -155,6 +161,7 @@ export function GameBoard({ board, draggedBlock, dragPosition, onPlaced }: GameB
           row.map((cell, cIdx) => {
             const isGhost = placementPreview.ghostCells.some(gc => gc.r === rIdx && gc.c === cIdx);
             const isAboutToClear = placementPreview.rowsToClear.includes(rIdx) || placementPreview.colsToClear.includes(cIdx);
+            const fits = draggedBlock && hoverPos ? canFit(board, draggedBlock.shape, hoverPos.r, hoverPos.c) : false;
 
             return (
               <div
@@ -163,13 +170,13 @@ export function GameBoard({ board, draggedBlock, dragPosition, onPlaced }: GameB
                   "w-9 h-9 sm:w-11 sm:h-11 md:w-14 md:h-14 rounded-md transition-all duration-150 border-[0.5px] border-white/5",
                   cell === "empty" && !isGhost ? "bg-white/[0.03]" : "blast-shadow",
                   isAboutToClear && "animate-flash brightness-150 z-10",
-                  isGhost && "brightness-125 z-20"
+                  isGhost && "z-20"
                 )}
                 style={{ 
                   backgroundColor: cell !== "empty" ? cell : (isGhost ? draggedBlock?.color : undefined),
-                  opacity: isGhost && !isAboutToClear ? 0.8 : 1,
-                  boxShadow: isGhost ? `0 0 30px ${draggedBlock?.color}` : undefined,
-                  transform: isGhost ? 'scale(1.02)' : 'none'
+                  opacity: isGhost ? (fits ? 1 : 0.4) : 1,
+                  boxShadow: isGhost && fits ? `0 0 30px ${draggedBlock?.color}` : undefined,
+                  transform: isGhost && fits ? 'scale(1.02)' : 'none'
                 }}
               />
             );

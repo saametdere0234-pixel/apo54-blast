@@ -1,3 +1,4 @@
+
 "use client";
 
 import React from "react";
@@ -12,7 +13,6 @@ interface BlockInventoryProps {
 
 export function BlockInventory({ blocks, activeDragId, onDragStart }: BlockInventoryProps) {
   const handleStartDrag = (e: React.PointerEvent, block: BlockPiece) => {
-    // Blocks are always interactive now
     onDragStart(block, { x: e.clientX, y: e.clientY });
   };
 
@@ -46,7 +46,7 @@ function BlockPreview({ shape, color, size }: { shape: number[][], color: string
           {row.map((cell, cIdx) => (
             <div
               key={cIdx}
-              className="rounded-[4px] shadow-sm"
+              className="rounded-[4px] shadow-sm blast-shadow"
               style={{ 
                 width: size,
                 height: size,
