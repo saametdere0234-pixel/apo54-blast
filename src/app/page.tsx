@@ -6,10 +6,11 @@ import { GameBoard } from "@/components/game/GameBoard";
 import { ScoreBoard } from "@/components/game/ScoreBoard";
 import { BlockInventory } from "@/components/game/BlockInventory";
 import { GameOverOverlay } from "@/components/game/GameOverOverlay";
-import { BOARD_SIZE, BlockPiece, canFit, generateUniqueInventory } from "@/lib/game-constants";
+import { BOARD_SIZE, BlockPiece, canFit, generateStrategicInventory } from "@/lib/game-constants";
 import { Toaster } from "@/components/ui/toaster";
 import { Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
 
 export default function Apo54BlastPage() {
   const [gameState, setGameState] = useState<"menu" | "playing" | "gameover">("menu");
@@ -21,6 +22,7 @@ export default function Apo54BlastPage() {
   const [inventory, setInventory] = useState<BlockPiece[]>([]);
   const [draggedBlock, setDraggedBlock] = useState<BlockPiece | null>(null);
   const [dragPosition, setDragPosition] = useState<{ x: number; y: number } | null>(null);
+  const { toast } = useToast();
 
   useEffect(() => {
     const saved = localStorage.getItem("apo54-blast-highscore");
@@ -57,9 +59,10 @@ export default function Apo54BlastPage() {
   }, [draggedBlock]);
 
   const startGame = () => {
-    setBoard(Array(BOARD_SIZE).fill(null).map(() => Array(BOARD_SIZE).fill("empty")));
+    const initialBoard = Array(BOARD_SIZE).fill(null).map(() => Array(BOARD_SIZE).fill("empty"));
+    setBoard(initialBoard);
     setScore(0);
-    setInventory(generateUniqueInventory(3));
+    setInventory(generateStrategicInventory(initialBoard, 3));
     setGameState("playing");
     setDraggedBlock(null);
     setDragPosition(null);
@@ -71,7 +74,7 @@ export default function Apo54BlastPage() {
     
     const newInventory = inventory.filter(b => b.id !== blockId);
     if (newInventory.length === 0) {
-      const replenished = generateUniqueInventory(3);
+      const replenished = generateStrategicInventory(newBoard, 3);
       setInventory(replenished);
       checkGameOver(newBoard, replenished);
     } else {
@@ -93,7 +96,27 @@ export default function Apo54BlastPage() {
     });
 
     if (!canPlaceAny) {
-      setGameState("gameover");
+      // Emergency Savior Protocol: If blocked, try to give savior blocks
+      const saviorInventory = generateStrategicInventory(currentBoard, currentInventory.length);
+      const stillBlocked = saviorInventory.every(block => {
+        for (let r = 0; r < BOARD_SIZE; r++) {
+          for (let c = 0; c < BOARD_SIZE; c++) {
+            if (canFit(currentBoard, block.shape, r, c)) return false;
+          }
+        }
+        return true;
+      });
+
+      if (stillBlocked) {
+        setGameState("gameover");
+      } else {
+        setInventory(saviorInventory);
+        toast({
+          title: "EMERGENCY BLAST!",
+          description: "New blocks provided to break the block!",
+          className: "bg-primary text-primary-foreground border-none font-bold italic",
+        });
+      }
     }
   };
 

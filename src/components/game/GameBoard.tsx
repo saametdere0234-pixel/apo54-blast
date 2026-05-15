@@ -16,14 +16,12 @@ interface GameBoardProps {
 export function GameBoard({ board, draggedBlock, dragPosition, onPlaced }: GameBoardProps) {
   const [hoverPos, setHoverPos] = useState<{ r: number; c: number } | null>(null);
   const gridRef = useRef<HTMLDivElement>(null);
-
-  // Use a ref for the latest hoverPos to ensure the pointerup closure is accurate
   const hoverPosRef = useRef(hoverPos);
+
   useEffect(() => {
     hoverPosRef.current = hoverPos;
   }, [hoverPos]);
 
-  // Handle global coordinate tracking
   useEffect(() => {
     if (!draggedBlock || !dragPosition || !gridRef.current) {
       setHoverPos(null);
@@ -34,15 +32,14 @@ export function GameBoard({ board, draggedBlock, dragPosition, onPlaced }: GameB
     const cellWidth = rect.width / BOARD_SIZE;
     const cellHeight = rect.height / BOARD_SIZE;
 
-    // Detect grid position based on cursor, with a slight vertical offset for visibility
+    // Detection centered slightly above cursor to avoid being covered by finger
     const x = dragPosition.x - rect.left - (draggedBlock.shape[0].length * cellWidth / 2);
     const y = dragPosition.y - rect.top - (draggedBlock.shape.length * cellHeight / 2) - (cellHeight * 1.5);
 
-    // Align detection to the top-left of the block
     const r = Math.round(y / cellHeight);
     const c = Math.round(x / cellWidth);
 
-    // Ensure block top-left stays within valid board bounds
+    // Keep preview within bounds
     if (r >= 0 && r <= BOARD_SIZE - draggedBlock.shape.length && 
         c >= 0 && c <= BOARD_SIZE - draggedBlock.shape[0].length) {
       setHoverPos({ r, c });
@@ -85,12 +82,7 @@ export function GameBoard({ board, draggedBlock, dragPosition, onPlaced }: GameB
     }
     for (let c = 0; c < BOARD_SIZE; c++) {
       let full = true;
-      for (let r = 0; r < BOARD_SIZE; r++) {
-        if (newBoard[r][c] === "empty") {
-          full = false;
-          break;
-        }
-      }
+      for (let r = 0; r < BOARD_SIZE; r++) if (newBoard[r][c] === "empty") { full = false; break; }
       if (full) colsToClear.push(c);
     }
 
@@ -108,14 +100,14 @@ export function GameBoard({ board, draggedBlock, dragPosition, onPlaced }: GameB
 
   const placementPreview = useMemo(() => {
     if (!draggedBlock || !hoverPos) 
-      return { ghostCells: [], rowsToClear: [], colsToClear: [] };
+      return { ghostCells: [], rowsToClear: [], colsToClear: [], fits: false };
     
     const ghostCells: {r: number, c: number}[] = [];
     const tempBoard = board.map(row => [...row]);
     const { r: row, c: col } = hoverPos;
     const shape = draggedBlock.shape;
+    const fits = canFit(board, shape, row, col);
 
-    // Previews are always visible if within bounds, regardless of fit
     for (let r = 0; r < shape.length; r++) {
       for (let c = 0; c < shape[r].length; c++) {
         if (shape[r][c] === 1) {
@@ -131,24 +123,16 @@ export function GameBoard({ board, draggedBlock, dragPosition, onPlaced }: GameB
 
     const rowsToClear: number[] = [];
     const colsToClear: number[] = [];
-    // Only show clear effects if the placement is actually valid
-    if (canFit(board, shape, row, col)) {
-      for (let r = 0; r < BOARD_SIZE; r++) {
-        if (tempBoard[r].every(cell => cell !== "empty")) rowsToClear.push(r);
-      }
+    if (fits) {
+      for (let r = 0; r < BOARD_SIZE; r++) if (tempBoard[r].every(cell => cell !== "empty")) rowsToClear.push(r);
       for (let c = 0; c < BOARD_SIZE; c++) {
         let full = true;
-        for (let r = 0; r < BOARD_SIZE; r++) {
-          if (tempBoard[r][c] === "empty") {
-            full = false;
-            break;
-          }
-        }
+        for (let r = 0; r < BOARD_SIZE; r++) if (tempBoard[r][c] === "empty") { full = false; break; }
         if (full) colsToClear.push(c);
       }
     }
 
-    return { ghostCells, rowsToClear, colsToClear };
+    return { ghostCells, rowsToClear, colsToClear, fits };
   }, [board, draggedBlock, hoverPos]);
 
   return (
@@ -161,8 +145,7 @@ export function GameBoard({ board, draggedBlock, dragPosition, onPlaced }: GameB
           row.map((cell, cIdx) => {
             const isGhost = placementPreview.ghostCells.some(gc => gc.r === rIdx && gc.c === cIdx);
             const isAboutToClear = placementPreview.rowsToClear.includes(rIdx) || placementPreview.colsToClear.includes(cIdx);
-            const fits = draggedBlock && hoverPos ? canFit(board, draggedBlock.shape, hoverPos.r, hoverPos.c) : false;
-
+            
             return (
               <div
                 key={`${rIdx}-${cIdx}`}
@@ -174,9 +157,9 @@ export function GameBoard({ board, draggedBlock, dragPosition, onPlaced }: GameB
                 )}
                 style={{ 
                   backgroundColor: cell !== "empty" ? cell : (isGhost ? draggedBlock?.color : undefined),
-                  opacity: isGhost ? (fits ? 1 : 0.4) : 1,
-                  boxShadow: isGhost && fits ? `0 0 30px ${draggedBlock?.color}` : undefined,
-                  transform: isGhost && fits ? 'scale(1.02)' : 'none'
+                  opacity: isGhost ? (placementPreview.fits ? 1 : 0.4) : 1,
+                  boxShadow: isGhost && placementPreview.fits ? `0 0 30px ${draggedBlock?.color}` : undefined,
+                  transform: isGhost && placementPreview.fits ? 'scale(1.02)' : 'none'
                 }}
               />
             );
