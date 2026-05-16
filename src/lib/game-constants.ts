@@ -6,6 +6,7 @@ export interface BlockPiece {
   shape: BlockShape;
   color: string;
   name: string;
+  weight: number; // For spawning probability
 }
 
 function rotateMatrix(matrix: number[][]): number[][] {
@@ -24,42 +25,30 @@ function shapeToString(shape: number[][]): string {
   return shape.map(row => row.join('')).join('|');
 }
 
-const RAW_BLOCK_DEFS: { name: string; color: string; shape: number[][] }[] = [
-  { name: '1x1', color: '#FF6666', shape: [[1]] },
-  { name: 'Line-2', color: '#FFB366', shape: [[1, 1]] },
-  { name: 'Line-3', color: '#FFFF66', shape: [[1, 1, 1]] },
-  { name: 'Line-4', color: '#66FF66', shape: [[1, 1, 1, 1]] },
-  { name: 'Line-5', color: '#66FFFF', shape: [[1, 1, 1, 1, 1]] },
-  { name: 'Square-2', color: '#66B3FF', shape: [[1, 1], [1, 1]] },
-  { name: 'Square-3', color: '#B366FF', shape: [[1, 1, 1], [1, 1, 1], [1, 1, 1]] },
-  { name: 'Rect-3x2', color: '#44CCFF', shape: [[1, 1, 1], [1, 1, 1]] },
-  { name: 'Rect-4x2', color: '#55EEFF', shape: [[1, 1, 1, 1], [1, 1, 1, 1]] },
-  { name: 'L-Small', color: '#FF66B3', shape: [[1, 0], [1, 1]] },
-  { name: 'L-Big', color: '#FF9999', shape: [[1, 0, 0], [1, 0, 0], [1, 1, 1]] },
-  { name: 'Z', color: '#99FF99', shape: [[1, 1, 0], [0, 1, 1]] },
-  { name: 'Z-Opp', color: '#99FF99', shape: [[0, 1, 1], [1, 1, 0]] },
-  { name: 'Half-Plus', color: '#FFA500', shape: [[1, 1, 1], [0, 1, 0]] },
-  { name: 'T-Big', color: '#FF33FF', shape: [[1, 1, 1], [0, 1, 0], [0, 1, 0]] },
-  { name: 'U-Shape', color: '#33FFFF', shape: [[1, 0, 1], [1, 1, 1]] },
-  { name: 'C-Shape', color: '#FFFF33', shape: [[1, 1], [1, 0], [1, 1]] },
-  { name: 'Stairs', color: '#33FF33', shape: [[1, 0, 0], [1, 1, 0], [0, 1, 1]] },
-  { name: 'Corner-Big', color: '#FF3333', shape: [[1, 1, 1], [1, 0, 0], [1, 0, 0]] },
-  { name: 'Diagonal-3', color: '#AD66FF', shape: [[1, 0, 0], [0, 1, 0], [0, 0, 1]] },
-  { name: 'Diagonal-2', color: '#AD66FF', shape: [[1, 0], [0, 1]] },
-  { name: 'Dot-Gap', color: '#FF6B6B', shape: [[1, 1], [1, 0]] },
-  { name: 'V-Small', color: '#4ECDC4', shape: [[1, 0], [1, 1]] },
-  { name: 'W-Shape', color: '#FFE66D', shape: [[1, 0, 0], [1, 1, 0], [0, 1, 1]] },
-  { name: 'E-Small', color: '#FF8FAB', shape: [[1, 1], [1, 0], [1, 1]] },
-  { name: 'H-Mini', color: '#00B4D8', shape: [[1, 0, 1], [1, 1, 1]] },
-  { name: 'Bridge', color: '#FCA311', shape: [[1, 1, 1], [1, 0, 1]] },
-  { name: 'Snake', color: '#9D4EDD', shape: [[1, 1, 1], [0, 0, 1], [0, 0, 1]] },
-  { name: 'Fork', color: '#4CC9F0', shape: [[1, 0, 1], [1, 1, 1], [0, 1, 0]] },
-  { name: 'X-Shape', color: '#F72585', shape: [[1, 0, 1], [0, 1, 0], [1, 0, 1]] },
-  { name: 'Comb', color: '#B5179E', shape: [[1, 0, 1], [1, 1, 1]] },
-  { name: 'Chair', color: '#7209B7', shape: [[1, 0], [1, 1], [1, 0]] },
-  { name: 'Hook', color: '#3F37C9', shape: [[1, 1, 1], [0, 0, 1]] },
-  { name: 'Trident', color: '#4361EE', shape: [[1, 1, 1], [1, 0, 1], [1, 0, 1]] },
-  { name: 'Zig-Zag-3', color: '#4895EF', shape: [[1, 1, 0], [0, 1, 1], [0, 0, 1]] },
+// Weights: 
+// - Useful (small/versatile): 1.7 (Base 1.0 + 70%)
+// - Board Clearing (large/lines): 1.2 (Base 1.0 + 20%)
+// - Standard: 1.0
+const RAW_BLOCK_DEFS: { name: string; color: string; shape: number[][]; weight: number }[] = [
+  // Dots and Lines (Useful & Clearing)
+  { name: '1x1', color: '#FF6666', shape: [[1]], weight: 1.7 },
+  { name: 'Line-2', color: '#FFB366', shape: [[1, 1]], weight: 1.7 },
+  { name: 'Line-3', color: '#FFFF66', shape: [[1, 1, 1]], weight: 1.0 },
+  { name: 'Line-4', color: '#66FF66', shape: [[1, 1, 1, 1]], weight: 1.2 },
+  { name: 'Line-5', color: '#66FFFF', shape: [[1, 1, 1, 1, 1]], weight: 1.2 },
+  
+  // Squares
+  { name: 'Square-2', color: '#66B3FF', shape: [[1, 1], [1, 1]], weight: 1.7 },
+  { name: 'Square-3', color: '#B366FF', shape: [[1, 1, 1], [1, 1, 1], [1, 1, 1]], weight: 1.2 },
+  
+  // L-shapes
+  { name: 'L-Small', color: '#FF66B3', shape: [[1, 0], [1, 1]], weight: 1.7 },
+  { name: 'L-Big', color: '#FF9999', shape: [[1, 0, 0], [1, 0, 0], [1, 1, 1]], weight: 1.0 },
+  
+  // Classic Polyominoes
+  { name: 'T-Shape', color: '#FF33FF', shape: [[1, 1, 1], [0, 1, 0]], weight: 1.0 },
+  { name: 'Z-Shape', color: '#99FF99', shape: [[1, 1, 0], [0, 1, 1]], weight: 1.0 },
+  { name: 'S-Shape', color: '#99FF99', shape: [[0, 1, 1], [1, 1, 0]], weight: 1.0 },
 ];
 
 const PROCESSED_BLOCKS: Omit<BlockPiece, 'id'>[] = [];
@@ -73,7 +62,8 @@ RAW_BLOCK_DEFS.forEach(def => {
       PROCESSED_BLOCKS.push({
         name: `${def.name}-r${i}`,
         color: def.color,
-        shape: currentShape
+        shape: currentShape,
+        weight: def.weight
       });
       seenShapes.add(shapeStr);
     }
@@ -85,19 +75,36 @@ export const BLOCK_DEFS = PROCESSED_BLOCKS;
 export const BOARD_SIZE = 8;
 
 export function generateUniqueInventory(count: number): BlockPiece[] {
-  const shuffled = [...BLOCK_DEFS].sort(() => 0.5 - Math.random());
   const selected: BlockPiece[] = [];
   const usedShapes = new Set<string>();
 
-  for (const def of shuffled) {
-    const s = shapeToString(def.shape);
-    if (selected.length < count && !usedShapes.has(s)) {
-      selected.push({
-        ...def,
-        id: Math.random().toString(36).substring(2, 11)
-      });
-      usedShapes.add(s);
+  // Use weighted random selection
+  while (selected.length < count) {
+    const totalWeight = BLOCK_DEFS.reduce((sum, block) => sum + block.weight, 0);
+    let random = Math.random() * totalWeight;
+    
+    let chosenBlock: Omit<BlockPiece, 'id'> | null = null;
+    for (const block of BLOCK_DEFS) {
+      if (random < block.weight) {
+        chosenBlock = block;
+        break;
+      }
+      random -= block.weight;
     }
+
+    if (chosenBlock) {
+      const s = shapeToString(chosenBlock.shape);
+      if (!usedShapes.has(s)) {
+        selected.push({
+          ...chosenBlock,
+          id: Math.random().toString(36).substring(2, 11)
+        });
+        usedShapes.add(s);
+      }
+    }
+    
+    // Safety break to prevent infinite loop if count is too high relative to unique shapes
+    if (usedShapes.size >= BLOCK_DEFS.length) break;
   }
   return selected;
 }
