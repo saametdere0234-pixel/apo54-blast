@@ -44,22 +44,26 @@ export function BlockInventory({ blocks, activeDragId, onDragStart }: BlockInven
         {displayBlocks.map((block) => {
           const isDragging = activeDragId === block.id;
           const isRemoving = removingId === block.id;
+          
+          // If the block is being dragged OR it is the one just placed (removing), 
+          // it should be visually hidden from the inventory.
+          const shouldBeHidden = isDragging || isRemoving;
 
           return (
             <div
               key={block.id}
               className={cn(
                 "transition-all duration-300 ease-in-out flex items-center justify-center shrink-0 overflow-hidden",
-                isRemoving ? "w-0 opacity-0 scale-50 px-0" : "w-[120px] sm:w-[150px] md:w-[180px] opacity-100 px-2"
+                isRemoving ? "w-0 opacity-0 px-0" : "w-[120px] sm:w-[150px] md:w-[180px] opacity-100 px-2"
               )}
             >
               <div
                 onPointerDown={(e) => handleStartDrag(e, block)}
                 className={cn(
                   "p-4 rounded-2xl cursor-grab active:cursor-grabbing transition-all duration-300 transform hover:bg-white/5 animate-pop-in shrink-0",
-                  isRemoving && "pointer-events-none",
-                  // Instant disappearance when dragging starts by bypassing transitions
-                  isDragging && "opacity-0 invisible transition-none pointer-events-none scale-0"
+                  // Use transition-none when hidden to avoid a "fade" or "scale" back to visible 
+                  // when the drag ends but the removal animation is still running.
+                  shouldBeHidden && "opacity-0 invisible transition-none scale-0 pointer-events-none"
                 )}
               >
                 <BlockPreview shape={block.shape} color={block.color} size={18} />
