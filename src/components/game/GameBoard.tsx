@@ -17,16 +17,8 @@ export function GameBoard({ board, draggedBlock, dragPosition, onPlaced, onSnapC
   const [hoverPos, setHoverPos] = useState<{ r: number; c: number } | null>(null);
   const [clearingLines, setClearingLines] = useState<{ rows: number[], cols: number[] } | null>(null);
   const [clearingColors, setClearingColors] = useState<Record<string, string>>({});
-  const [visualBoard, setVisualBoard] = useState<string[][]>(board);
   const gridRef = useRef<HTMLDivElement>(null);
   const hoverPosRef = useRef(hoverPos);
-
-  // Sync visual board with prop board only when NOT in the middle of a clear animation
-  useEffect(() => {
-    if (!clearingLines) {
-      setVisualBoard(board);
-    }
-  }, [board, clearingLines]);
 
   useEffect(() => {
     hoverPosRef.current = hoverPos;
@@ -89,14 +81,14 @@ export function GameBoard({ board, draggedBlock, dragPosition, onPlaced, onSnapC
 
   const handlePlacement = (block: BlockPiece, pos: { r: number, c: number }) => {
     const { r: startRow, c: startCol } = pos;
-    const interimBoard = visualBoard.map(row => [...row]);
+    const nextBoard = board.map(row => [...row]);
     const shape = block.shape;
     
-    // 1. Physically place the block on our interim representation
+    // 1. Physically place the block on our temporary representation to calculate clears
     for (let r = 0; r < shape.length; r++) {
       for (let c = 0; c < shape[r].length; c++) {
         if (shape[r][c] === 1) {
-          interimBoard[startRow + r][startCol + c] = block.color;
+          nextBoard[startRow + r][startCol + c] = block.color;
         }
       }
     }
@@ -105,11 +97,11 @@ export function GameBoard({ board, draggedBlock, dragPosition, onPlaced, onSnapC
     const rowsToClear: number[] = [];
     const colsToClear: number[] = [];
     for (let r = 0; r < BOARD_SIZE; r++) {
-      if (interimBoard[r].every(cell => cell !== "empty")) rowsToClear.push(r);
+      if (nextBoard[r].every(cell => cell !== "empty")) rowsToClear.push(r);
     }
     for (let c = 0; c < BOARD_SIZE; c++) {
       let full = true;
-      for (let r = 0; r < BOARD_SIZE; r++) if (interimBoard[r][c] === "empty") { full = false; break; }
+      for (let r = 0; r < BOARD_SIZE; r++) if (nextBoard[r][c] === "empty") { full = false; break; }
       if (full) colsToClear.push(c);
     }
 
@@ -117,32 +109,31 @@ export function GameBoard({ board, draggedBlock, dragPosition, onPlaced, onSnapC
     const linesCleared = rowsToClear.length + colsToClear.length;
 
     if (linesCleared > 0) {
-      // 3. Prepare the "Ghost Explosion"
+      // 3. Prepare "Ghost Explosion" colors
       const colors: Record<string, string> = {};
-      const finalBoard = interimBoard.map(row => [...row]);
+      const finalBoard = nextBoard.map(row => [...row]);
 
-      // Capture colors for the animation and clear the finalBoard data immediately
       rowsToClear.forEach(r => {
         for (let c = 0; c < BOARD_SIZE; c++) {
-          if (interimBoard[r][c] !== "empty") colors[`${r}-${c}`] = interimBoard[r][c];
+          colors[`${r}-${c}`] = nextBoard[r][c];
           finalBoard[r][c] = "empty";
         }
       });
       colsToClear.forEach(c => {
         for (let r = 0; r < BOARD_SIZE; r++) {
-          if (interimBoard[r][c] !== "empty") colors[`${r}-${c}`] = interimBoard[r][c];
+          colors[`${r}-${c}`] = nextBoard[r][c];
           finalBoard[r][c] = "empty";
         }
       });
 
       points += linesCleared * 10 * linesCleared;
 
-      // 4. Set states atomically to trigger animation while data is empty
+      // 4. Update animation state and parent immediately
+      // The parent will now show 'empty' tiles, but the child will render 
+      // the 'clearingColors' in those empty slots for the duration of the animation.
       setClearingColors(colors);
       setClearingLines({ rows: rowsToClear, cols: colsToClear });
-      setVisualBoard(finalBoard); // Logic state is now empty
       
-      // Update parent immediately so score and inventory move forward
       onPlaced(finalBoard, points, block.id);
 
       // 5. Cleanup animation flags after visual duration
@@ -151,8 +142,7 @@ export function GameBoard({ board, draggedBlock, dragPosition, onPlaced, onSnapC
         setClearingColors({});
       }, 400); 
     } else {
-      setVisualBoard(interimBoard);
-      onPlaced(interimBoard, points, block.id);
+      onPlaced(nextBoard, points, block.id);
     }
 
     setHoverPos(null);
@@ -201,7 +191,7 @@ export function GameBoard({ board, draggedBlock, dragPosition, onPlaced, onSnapC
         ref={gridRef}
         className="grid grid-cols-8 gap-[3px] p-3 bg-card/60 border border-white/10 rounded-xl shadow-2xl backdrop-blur-sm relative"
       >
-        {visualBoard.map((row, rIdx) => 
+        {board.map((row, rIdx) => 
           row.map((cell, cIdx) => {
             const cellKey = `${rIdx}-${cIdx}`;
             const isGhost = placementPreview.ghostCells.some(gc => gc.r === rIdx && gc.c === cIdx);
@@ -209,7 +199,8 @@ export function GameBoard({ board, draggedBlock, dragPosition, onPlaced, onSnapC
             const isActuallyClearing = clearingLines && (clearingLines.rows.includes(rIdx) || clearingLines.cols.includes(cIdx));
             const clearColor = clearingColors[cellKey];
             
-            // Use the "Ghost Color" if we are in the middle of a blast
+            // The magic fix: if we are in the 'actually clearing' phase, we override the board data 
+            // (which is already 'empty') with the preserved 'clearColor' for the animation.
             const activeColor = isActuallyClearing ? clearColor : (cell !== "empty" ? cell : (isGhost ? draggedBlock?.color : null));
 
             return (
