@@ -16,6 +16,7 @@ export function BlockInventory({ blocks, activeDragId, onDragStart }: BlockInven
   const [removingId, setRemovingId] = useState<string | null>(null);
 
   useEffect(() => {
+    // If a block was removed (placed), we handle the transition
     if (blocks.length < displayBlocks.length) {
       const removed = displayBlocks.find(db => !blocks.find(b => b.id === db.id));
       if (removed) {
@@ -27,7 +28,9 @@ export function BlockInventory({ blocks, activeDragId, onDragStart }: BlockInven
         return () => clearTimeout(timer);
       }
     } else {
+      // If blocks were replenished or the count is the same, update immediately
       setDisplayBlocks(blocks);
+      setRemovingId(null);
     }
   }, [blocks, displayBlocks.length]);
 
@@ -36,28 +39,38 @@ export function BlockInventory({ blocks, activeDragId, onDragStart }: BlockInven
   };
 
   return (
-    <div className="w-full bg-card/40 border border-white/5 rounded-3xl p-8 flex justify-center items-center gap-4 sm:gap-10 min-h-[160px] backdrop-blur-md relative select-none overflow-hidden">
-      {displayBlocks.map((block) => {
-        const isDragging = activeDragId === block.id;
-        const isRemoving = removingId === block.id;
+    <div className="w-full bg-card/40 border border-white/5 rounded-3xl p-8 flex justify-center items-center min-h-[180px] backdrop-blur-md relative select-none overflow-hidden">
+      <div className="flex items-center justify-center">
+        {displayBlocks.map((block) => {
+          const isDragging = activeDragId === block.id;
+          const isRemoving = removingId === block.id;
 
-        return (
-          <div
-            key={block.id}
-            onPointerDown={(e) => handleStartDrag(e, block)}
-            className={cn(
-              "p-4 rounded-2xl cursor-grab active:cursor-grabbing transition-all duration-300 flex items-center justify-center transform hover:bg-white/5 animate-pop-in shrink-0",
-              (isDragging || isRemoving) && "opacity-0 scale-0 w-0 h-0 p-0 pointer-events-none -mx-4 overflow-hidden"
-            )}
-            style={{ 
-              transitionProperty: 'all',
-              transitionTimingFunction: 'cubic-bezier(0.4, 0, 0.2, 1)',
-            }}
-          >
-            <BlockPreview shape={block.shape} color={block.color} size={18} />
-          </div>
-        );
-      })}
+          return (
+            <div
+              key={block.id}
+              className={cn(
+                "transition-all duration-300 ease-in-out flex items-center justify-center shrink-0 overflow-hidden",
+                isRemoving ? "w-0 opacity-0 scale-50 px-0" : "w-[120px] sm:w-[150px] md:w-[180px] opacity-100 px-2"
+              )}
+              style={{ 
+                // When dragging, we hide the item in the inventory but keep its layout space
+                // so other blocks don't jump around.
+                visibility: isDragging ? 'hidden' : 'visible'
+              }}
+            >
+              <div
+                onPointerDown={(e) => handleStartDrag(e, block)}
+                className={cn(
+                  "p-4 rounded-2xl cursor-grab active:cursor-grabbing transition-all duration-300 transform hover:bg-white/5 animate-pop-in shrink-0",
+                  isRemoving && "pointer-events-none"
+                )}
+              >
+                <BlockPreview shape={block.shape} color={block.color} size={18} />
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -70,13 +83,13 @@ function BlockPreview({ shape, color, size }: { shape: number[][], color: string
           {row.map((cell, cIdx) => (
             <div
               key={cIdx}
-              className="rounded-[4px] shadow-sm blast-shadow"
+              className="rounded-[4px] shadow-sm"
               style={{ 
                 width: size,
                 height: size,
                 backgroundColor: cell === 1 ? color : "transparent",
                 opacity: cell === 1 ? 1 : 0,
-                boxShadow: cell === 1 ? `0 0 10px ${color}66` : 'none',
+                boxShadow: cell === 1 ? `0 0 15px ${color}44` : 'none',
                 border: cell === 1 ? '1px solid rgba(255,255,255,0.1)' : 'none'
               }}
             />
