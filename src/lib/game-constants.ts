@@ -33,6 +33,7 @@ const RAW_BLOCK_DEFS: { name: string; color: string; shape: number[][] }[] = [
   { name: 'Square-2', color: '#66B3FF', shape: [[1, 1], [1, 1]] },
   { name: 'Square-3', color: '#B366FF', shape: [[1, 1, 1], [1, 1, 1], [1, 1, 1]] },
   { name: 'Rect-3x2', color: '#44CCFF', shape: [[1, 1, 1], [1, 1, 1]] },
+  { name: 'Rect-4x2', color: '#55EEFF', shape: [[1, 1, 1, 1], [1, 1, 1, 1]] },
   { name: 'L-Small', color: '#FF66B3', shape: [[1, 0], [1, 1]] },
   { name: 'L-Big', color: '#FF9999', shape: [[1, 0, 0], [1, 0, 0], [1, 1, 1]] },
   { name: 'Z', color: '#99FF99', shape: [[1, 1, 0], [0, 1, 1]] },
@@ -45,9 +46,22 @@ const RAW_BLOCK_DEFS: { name: string; color: string; shape: number[][] }[] = [
   { name: 'Corner-Big', color: '#FF3333', shape: [[1, 1, 1], [1, 0, 0], [1, 0, 0]] },
   { name: 'Diagonal-3', color: '#AD66FF', shape: [[1, 0, 0], [0, 1, 0], [0, 0, 1]] },
   { name: 'Diagonal-2', color: '#AD66FF', shape: [[1, 0], [0, 1]] },
+  { name: 'Dot-Gap', color: '#FF6B6B', shape: [[1, 1], [1, 0]] },
+  { name: 'V-Small', color: '#4ECDC4', shape: [[1, 0], [1, 1]] },
+  { name: 'W-Shape', color: '#FFE66D', shape: [[1, 0, 0], [1, 1, 0], [0, 1, 1]] },
+  { name: 'E-Small', color: '#FF8FAB', shape: [[1, 1], [1, 0], [1, 1]] },
+  { name: 'H-Mini', color: '#00B4D8', shape: [[1, 0, 1], [1, 1, 1]] },
+  { name: 'Bridge', color: '#FCA311', shape: [[1, 1, 1], [1, 0, 1]] },
+  { name: 'Snake', color: '#9D4EDD', shape: [[1, 1, 1], [0, 0, 1], [0, 0, 1]] },
+  { name: 'Fork', color: '#4CC9F0', shape: [[1, 0, 1], [1, 1, 1], [0, 1, 0]] },
+  { name: 'X-Shape', color: '#F72585', shape: [[1, 0, 1], [0, 1, 0], [1, 0, 1]] },
+  { name: 'Comb', color: '#B5179E', shape: [[1, 0, 1], [1, 1, 1]] },
+  { name: 'Chair', color: '#7209B7', shape: [[1, 0], [1, 1], [1, 0]] },
+  { name: 'Hook', color: '#3F37C9', shape: [[1, 1, 1], [0, 0, 1]] },
+  { name: 'Trident', color: '#4361EE', shape: [[1, 1, 1], [1, 0, 1], [1, 0, 1]] },
+  { name: 'Zig-Zag-3', color: '#4895EF', shape: [[1, 1, 0], [0, 1, 1], [0, 0, 1]] },
 ];
 
-// Generate all rotations and remove duplicates
 const PROCESSED_BLOCKS: Omit<BlockPiece, 'id'>[] = [];
 const seenShapes = new Set<string>();
 
