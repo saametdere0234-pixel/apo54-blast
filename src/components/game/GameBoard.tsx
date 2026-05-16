@@ -4,7 +4,6 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
 import { BOARD_SIZE, BlockPiece, getBlockSize, canFit } from "@/lib/game-constants";
 import { cn } from "@/lib/utils";
-import { AIStrategyButton } from "./AIStrategyButton";
 
 interface GameBoardProps {
   board: string[][];
@@ -172,10 +171,6 @@ export function GameBoard({ board, draggedBlock, dragPosition, onPlaced, onSnapC
             );
           })
         )}
-      </div>
-      
-      <div className="absolute -right-20 top-0 hidden lg:block">
-        <AIStrategyButton boardState={board} />
       </div>
     </div>
   );
