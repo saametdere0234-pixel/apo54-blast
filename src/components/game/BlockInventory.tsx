@@ -52,17 +52,14 @@ export function BlockInventory({ blocks, activeDragId, onDragStart }: BlockInven
                 "transition-all duration-300 ease-in-out flex items-center justify-center shrink-0 overflow-hidden",
                 isRemoving ? "w-0 opacity-0 scale-50 px-0" : "w-[120px] sm:w-[150px] md:w-[180px] opacity-100 px-2"
               )}
-              style={{ 
-                // When dragging, we hide the item in the inventory but keep its layout space
-                // so other blocks don't jump around.
-                visibility: isDragging ? 'hidden' : 'visible'
-              }}
             >
               <div
                 onPointerDown={(e) => handleStartDrag(e, block)}
                 className={cn(
                   "p-4 rounded-2xl cursor-grab active:cursor-grabbing transition-all duration-300 transform hover:bg-white/5 animate-pop-in shrink-0",
-                  isRemoving && "pointer-events-none"
+                  isRemoving && "pointer-events-none",
+                  // Instant disappearance when dragging starts by bypassing transitions
+                  isDragging && "opacity-0 invisible transition-none pointer-events-none scale-0"
                 )}
               >
                 <BlockPreview shape={block.shape} color={block.color} size={18} />
