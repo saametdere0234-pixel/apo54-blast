@@ -37,14 +37,18 @@ export function GameBoard({ board, draggedBlock, dragPosition, onPlaced, onSnapC
     }
 
     const rect = gridRef.current.getBoundingClientRect();
-    const cellWidth = (rect.width - 24) / BOARD_SIZE; 
-    const cellHeight = (rect.height - 24) / BOARD_SIZE;
+    // Accounting for 12px padding on each side (p-3 = 12px) and 3px gaps between cells
+    const padding = 24; 
+    const gapsTotal = (BOARD_SIZE - 1) * 3;
+    const cellWidth = (rect.width - padding - gapsTotal) / BOARD_SIZE;
+    const cellHeight = (rect.height - padding - gapsTotal) / BOARD_SIZE;
 
-    const x = dragPosition.x - rect.left - (draggedBlock.shape[0].length * cellWidth / 2);
-    const y = dragPosition.y - rect.top - (draggedBlock.shape.length * cellHeight / 2);
+    // Center the block calculation based on the cursor position
+    const x = dragPosition.x - rect.left - 12 - (draggedBlock.shape[0].length * (cellWidth + 3) / 2);
+    const y = dragPosition.y - rect.top - 12 - (draggedBlock.shape.length * (cellHeight + 3) / 2);
 
-    const r = Math.round(y / cellHeight);
-    const c = Math.round(x / cellWidth);
+    const r = Math.round(y / (cellHeight + 3));
+    const c = Math.round(x / (cellWidth + 3));
 
     if (r >= -0.5 && r <= BOARD_SIZE - draggedBlock.shape.length + 0.5 && 
         c >= -0.5 && c <= BOARD_SIZE - draggedBlock.shape[0].length + 0.5) {
@@ -53,8 +57,8 @@ export function GameBoard({ board, draggedBlock, dragPosition, onPlaced, onSnapC
       
       setHoverPos({ r: validR, c: validC });
       onSnapChange?.({
-        x: rect.left + 12 + (validC * (cellWidth + 3)), 
-        y: rect.top + 12 + (validR * (cellHeight + 3))
+        x: rect.left + 12 + (validC * (cellWidth + 3)) + (cellWidth / 2), 
+        y: rect.top + 12 + (validR * (cellHeight + 3)) + (cellHeight / 2)
       });
     } else {
       setHoverPos(null);
@@ -115,8 +119,12 @@ export function GameBoard({ board, draggedBlock, dragPosition, onPlaced, onSnapC
         rowsToClear.forEach(r => finalBoard[r] = Array(BOARD_SIZE).fill("empty"));
         colsToClear.forEach(c => finalBoard.forEach(r => r[c] = "empty"));
         
-        onPlaced(finalBoard, points, block.id);
+        // Update local state first to prevent the "reappearing" glitch
+        setVisualBoard(finalBoard);
         setClearingLines(null);
+        
+        // Notify parent to update the source of truth
+        onPlaced(finalBoard, points, block.id);
       }, 400); 
     } else {
       onPlaced(interimBoard, points, block.id);
