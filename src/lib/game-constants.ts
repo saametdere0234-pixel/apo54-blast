@@ -42,9 +42,6 @@ export const BLOCK_DEFS: Omit<BlockPiece, 'id'>[] = [
 
 export const BOARD_SIZE = 8;
 
-/**
- * Generates a specified number of unique blocks.
- */
 export function generateUniqueInventory(count: number): BlockPiece[] {
   const shuffled = [...BLOCK_DEFS].sort(() => 0.5 - Math.random());
   const selected: BlockPiece[] = [];
@@ -59,60 +56,6 @@ export function generateUniqueInventory(count: number): BlockPiece[] {
       usedNames.add(def.name);
     }
   }
-  return selected;
-}
-
-/**
- * Strategic generator that prioritizes blocks that can clear lines.
- */
-export function generateStrategicInventory(board: string[][], count: number): BlockPiece[] {
-  const scoredBlocks = BLOCK_DEFS.map(def => {
-    let bestScore = -1;
-    for (let r = 0; r <= BOARD_SIZE - def.shape.length; r++) {
-      for (let c = 0; c <= BOARD_SIZE - def.shape[0].length; c++) {
-        if (canFit(board, def.shape, r, c)) {
-          let score = 10; // Base score for fitting
-          
-          const tempBoard = board.map(row => [...row]);
-          for (let dr = 0; dr < def.shape.length; dr++) {
-            for (let dc = 0; dc < def.shape[dr].length; dc++) {
-              if (def.shape[dr][dc] === 1) tempBoard[r + dr][c + dc] = def.color;
-            }
-          }
-
-          let cleared = 0;
-          for (let i = 0; i < BOARD_SIZE; i++) {
-            if (tempBoard[i].every(cell => cell !== "empty")) cleared++;
-            let fullCol = true;
-            for (let j = 0; j < BOARD_SIZE; j++) if (tempBoard[j][i] === "empty") { fullCol = false; break; }
-            if (fullCol) cleared++;
-          }
-          score += cleared * 100;
-          if (score > bestScore) bestScore = score;
-        }
-      }
-    }
-    return { def, score: bestScore };
-  });
-
-  const candidates = scoredBlocks.filter(b => b.score > 0).sort((a, b) => b.score - a.score);
-  
-  if (candidates.length === 0) return generateUniqueInventory(count);
-
-  const selected: BlockPiece[] = [];
-  const usedNames = new Set<string>();
-  const topPool = candidates.slice(0, Math.max(count, Math.ceil(candidates.length * 0.4)));
-
-  while (selected.length < count && topPool.length > 0) {
-    const idx = Math.floor(Math.random() * topPool.length);
-    const item = topPool.splice(idx, 1)[0];
-    if (!usedNames.has(item.def.name)) {
-      selected.push({ ...item.def, id: Math.random().toString(36).substr(2, 9) });
-      usedNames.add(item.def.name);
-    }
-  }
-
-  if (selected.length < count) return generateUniqueInventory(count);
   return selected;
 }
 

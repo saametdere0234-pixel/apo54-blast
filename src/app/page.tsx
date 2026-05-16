@@ -1,12 +1,12 @@
 
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { GameBoard } from "@/components/game/GameBoard";
 import { ScoreBoard } from "@/components/game/ScoreBoard";
 import { BlockInventory } from "@/components/game/BlockInventory";
 import { GameOverOverlay } from "@/components/game/GameOverOverlay";
-import { BOARD_SIZE, BlockPiece, canFit, generateStrategicInventory } from "@/lib/game-constants";
+import { BOARD_SIZE, BlockPiece, canFit, generateUniqueInventory } from "@/lib/game-constants";
 import { Toaster } from "@/components/ui/toaster";
 import { Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -21,6 +21,7 @@ export default function Apo54BlastPage() {
   const [inventory, setInventory] = useState<BlockPiece[]>([]);
   const [draggedBlock, setDraggedBlock] = useState<BlockPiece | null>(null);
   const [dragPosition, setDragPosition] = useState<{ x: number; y: number } | null>(null);
+  const [snapCoord, setSnapCoord] = useState<{ x: number; y: number } | null>(null);
 
   useEffect(() => {
     const saved = localStorage.getItem("apo54-blast-highscore");
@@ -44,6 +45,7 @@ export default function Apo54BlastPage() {
     const handlePointerUp = () => {
       setDraggedBlock(null);
       setDragPosition(null);
+      setSnapCoord(null);
     };
 
     if (draggedBlock) {
@@ -60,7 +62,7 @@ export default function Apo54BlastPage() {
     const initialBoard = Array(BOARD_SIZE).fill(null).map(() => Array(BOARD_SIZE).fill("empty"));
     setBoard(initialBoard);
     setScore(0);
-    setInventory(generateStrategicInventory(initialBoard, 3));
+    setInventory(generateUniqueInventory(3));
     setGameState("playing");
     setDraggedBlock(null);
     setDragPosition(null);
@@ -72,7 +74,7 @@ export default function Apo54BlastPage() {
     
     const newInventory = inventory.filter(b => b.id !== blockId);
     if (newInventory.length === 0) {
-      const replenished = generateStrategicInventory(newBoard, 3);
+      const replenished = generateUniqueInventory(3);
       setInventory(replenished);
       checkGameOver(newBoard, replenished);
     } else {
@@ -81,6 +83,7 @@ export default function Apo54BlastPage() {
     }
     setDraggedBlock(null);
     setDragPosition(null);
+    setSnapCoord(null);
   }, [inventory]);
 
   const checkGameOver = (currentBoard: string[][], currentInventory: BlockPiece[]) => {
@@ -142,6 +145,7 @@ export default function Apo54BlastPage() {
             draggedBlock={draggedBlock}
             dragPosition={dragPosition}
             onPlaced={handleBlockPlaced}
+            onSnapChange={setSnapCoord}
           />
 
           <BlockInventory 
@@ -159,9 +163,10 @@ export default function Apo54BlastPage() {
         <div 
           className="fixed pointer-events-none z-[100] transition-transform duration-75"
           style={{ 
-            left: dragPosition.x, 
-            top: dragPosition.y, 
-            transform: 'translate(-50%, -150%) scale(1.1)' 
+            left: snapCoord ? snapCoord.x : dragPosition.x, 
+            top: snapCoord ? snapCoord.y : dragPosition.y, 
+            transform: snapCoord ? 'none' : 'translate(-50%, -150%) scale(1.1)',
+            opacity: snapCoord ? 0 : 1 // Hide floating block if snapped to board (let board handle it)
           }}
         >
           <div className="flex flex-col gap-[2px]">
@@ -170,7 +175,7 @@ export default function Apo54BlastPage() {
                 {row.map((cell, cIdx) => (
                   <div
                     key={cIdx}
-                    className="w-9 h-9 sm:w-11 sm:h-11 md:w-12 md:h-12 rounded-md shadow-lg"
+                    className="w-9 h-9 sm:w-11 sm:h-11 md:w-14 md:h-14 rounded-md shadow-lg"
                     style={{ 
                       backgroundColor: cell === 1 ? draggedBlock.color : "transparent",
                       opacity: cell === 1 ? 0.9 : 0,

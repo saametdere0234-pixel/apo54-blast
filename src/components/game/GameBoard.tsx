@@ -11,9 +11,10 @@ interface GameBoardProps {
   draggedBlock: BlockPiece | null;
   dragPosition: { x: number; y: number } | null;
   onPlaced: (newBoard: string[][], points: number, blockId: string) => void;
+  onSnapChange?: (pos: { x: number; y: number } | null) => void;
 }
 
-export function GameBoard({ board, draggedBlock, dragPosition, onPlaced }: GameBoardProps) {
+export function GameBoard({ board, draggedBlock, dragPosition, onPlaced, onSnapChange }: GameBoardProps) {
   const [hoverPos, setHoverPos] = useState<{ r: number; c: number } | null>(null);
   const gridRef = useRef<HTMLDivElement>(null);
   const hoverPosRef = useRef(hoverPos);
@@ -25,29 +26,35 @@ export function GameBoard({ board, draggedBlock, dragPosition, onPlaced }: GameB
   useEffect(() => {
     if (!draggedBlock || !dragPosition || !gridRef.current) {
       setHoverPos(null);
+      onSnapChange?.(null);
       return;
     }
 
     const rect = gridRef.current.getBoundingClientRect();
-    const cellWidth = (rect.width - 24) / BOARD_SIZE; // accounting for padding/gap
+    const cellWidth = (rect.width - 24) / BOARD_SIZE; 
     const cellHeight = (rect.height - 24) / BOARD_SIZE;
 
-    // High sensitivity detection
-    // The target point is centered slightly above the finger to allow the user to see the preview
+    // Use the same offset calculation as the floating block in page.tsx for alignment
+    // Target is centered and lifted above finger
     const x = dragPosition.x - rect.left - (draggedBlock.shape[0].length * cellWidth / 2);
     const y = dragPosition.y - rect.top - (draggedBlock.shape.length * cellHeight / 2) - (cellHeight * 1.5);
 
     const r = Math.round(y / cellHeight);
     const c = Math.round(x / cellWidth);
 
-    // Keep preview within bounds
     if (r >= 0 && r <= BOARD_SIZE - draggedBlock.shape.length && 
         c >= 0 && c <= BOARD_SIZE - draggedBlock.shape[0].length) {
       setHoverPos({ r, c });
+      // Calculate global screen coords of the top-left cell of the snap
+      onSnapChange?.({
+        x: rect.left + 12 + (c * (cellWidth + 3)), // accounting for padding/gap
+        y: rect.top + 12 + (r * (cellHeight + 3))
+      });
     } else {
       setHoverPos(null);
+      onSnapChange?.(null);
     }
-  }, [draggedBlock, dragPosition]);
+  }, [draggedBlock, dragPosition, onSnapChange]);
 
   useEffect(() => {
     const handleGlobalPointerUp = () => {
@@ -158,7 +165,7 @@ export function GameBoard({ board, draggedBlock, dragPosition, onPlaced }: GameB
                 )}
                 style={{ 
                   backgroundColor: cell !== "empty" ? cell : (isGhost ? draggedBlock?.color : undefined),
-                  opacity: isGhost ? (placementPreview.fits ? 0.7 : 0.2) : 1,
+                  opacity: isGhost ? (placementPreview.fits ? 1 : 0.3) : 1, // Full opacity when snap fits
                   boxShadow: isGhost && placementPreview.fits ? `0 0 30px ${draggedBlock?.color}` : undefined,
                   transform: isGhost && placementPreview.fits ? 'scale(1.02)' : 'none'
                 }}
