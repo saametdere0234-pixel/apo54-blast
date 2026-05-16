@@ -14,8 +14,6 @@ interface GameBoardProps {
 
 export function GameBoard({ board, draggedBlock, dragPosition, onPlaced, onSnapChange }: GameBoardProps) {
   const [hoverPos, setHoverPos] = useState<{ r: number; c: number } | null>(null);
-  const [clearingLines, setClearingLines] = useState<{ rows: number[], cols: number[] } | null>(null);
-  const [clearingColors, setClearingColors] = useState<Record<string, string>>({});
   const gridRef = useRef<HTMLDivElement>(null);
   const hoverPosRef = useRef(hoverPos);
 
@@ -83,7 +81,7 @@ export function GameBoard({ board, draggedBlock, dragPosition, onPlaced, onSnapC
     const nextBoard = board.map(row => [...row]);
     const shape = block.shape;
     
-    // 1. Physically place the block to calculate clears
+    // 1. Physically place the block
     for (let r = 0; r < shape.length; r++) {
       for (let c = 0; c < shape[r].length; c++) {
         if (shape[r][c] === 1) {
@@ -108,37 +106,16 @@ export function GameBoard({ board, draggedBlock, dragPosition, onPlaced, onSnapC
     const linesCleared = rowsToClear.length + colsToClear.length;
 
     if (linesCleared > 0) {
-      // 3. Prepare "Ghost Explosion" colors to prevent flickering
-      const colors: Record<string, string> = {};
       const finalBoard = nextBoard.map(row => [...row]);
-
       rowsToClear.forEach(r => {
-        for (let c = 0; c < BOARD_SIZE; c++) {
-          colors[`${r}-${c}`] = nextBoard[r][c];
-          finalBoard[r][c] = "empty";
-        }
+        for (let c = 0; c < BOARD_SIZE; c++) finalBoard[r][c] = "empty";
       });
       colsToClear.forEach(c => {
-        for (let r = 0; r < BOARD_SIZE; r++) {
-          colors[`${r}-${c}`] = nextBoard[r][c];
-          finalBoard[r][c] = "empty";
-        }
+        for (let r = 0; r < BOARD_SIZE; r++) finalBoard[r][c] = "empty";
       });
 
       points += linesCleared * 10 * linesCleared;
-
-      // 4. Update animation state AND final board immediately
-      setClearingColors(colors);
-      setClearingLines({ rows: rowsToClear, cols: colsToClear });
-      
       onPlaced(finalBoard, points, block.id);
-
-      // 5. Cleanup animation flags after visual duration + 100ms buffer
-      // The extra 100ms buffer ensures parent state sync has definitively finished
-      setTimeout(() => {
-        setClearingLines(null);
-        setClearingColors({});
-      }, 550); 
     } else {
       onPlaced(nextBoard, points, block.id);
     }
@@ -194,28 +171,22 @@ export function GameBoard({ board, draggedBlock, dragPosition, onPlaced, onSnapC
             const cellKey = `${rIdx}-${cIdx}`;
             const isGhost = placementPreview.ghostCells.some(gc => gc.r === rIdx && gc.c === cIdx);
             const isAboutToClear = placementPreview.rowsToClear.includes(rIdx) || placementPreview.colsToClear.includes(cIdx);
-            const isActuallyClearing = clearingLines && (clearingLines.rows.includes(rIdx) || clearingLines.cols.includes(cIdx));
-            const clearColor = clearingColors[cellKey];
             
-            // The Ghost Explosion Strategy:
-            // Even if the prop data is "empty", if we are in the clearing phase, 
-            // we override it with the preserved color for the animation.
-            const activeColor = isActuallyClearing ? clearColor : (cell !== "empty" ? cell : (isGhost ? draggedBlock?.color : null));
+            const activeColor = cell !== "empty" ? cell : (isGhost ? draggedBlock?.color : null);
 
             return (
               <div
                 key={cellKey}
                 className={cn(
                   "w-9 h-9 sm:w-11 sm:h-11 md:w-14 md:h-14 rounded-md transition-all duration-150 border-[0.5px] border-white/5",
-                  cell === "empty" && !isGhost && !isActuallyClearing ? "bg-white/[0.03]" : "blast-shadow",
-                  isAboutToClear && !isActuallyClearing && "animate-flash brightness-150 z-10",
-                  isActuallyClearing && "animate-blast-out z-20",
+                  cell === "empty" && !isGhost ? "bg-white/[0.03]" : "blast-shadow",
+                  isAboutToClear && "animate-flash brightness-150 z-10",
                   isGhost && "z-20"
                 )}
                 style={{ 
                   backgroundColor: activeColor || undefined,
                   opacity: isGhost && !placementPreview.fits ? 0.3 : 1,
-                  boxShadow: (isGhost && placementPreview.fits) || isActuallyClearing ? `0 0 30px ${activeColor}` : undefined,
+                  boxShadow: (isGhost && placementPreview.fits) ? `0 0 30px ${activeColor}` : undefined,
                   transform: isGhost && placementPreview.fits ? 'scale(1.02)' : 'none',
                 }}
               />
