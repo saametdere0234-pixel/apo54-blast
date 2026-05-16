@@ -25,27 +25,22 @@ function shapeToString(shape: number[][]): string {
   return shape.map(row => row.join('')).join('|');
 }
 
-// Weights based on user request:
-// - Useful (small/versatile): 1.7 (Base 1.0 + 70%)
-// - Board Clearing (large/lines): 1.2 (Base 1.0 + 20%)
-// - Standard: 1.0
+// Original Block Blast Block Definitions with Weights
 const RAW_BLOCK_DEFS: { name: string; color: string; shape: number[][]; weight: number }[] = [
-  // Dots and Lines (Useful & Clearing)
+  // Useful (Small/Versatile) - Base Weight 1.7 (+70%)
   { name: '1x1', color: '#FF6666', shape: [[1]], weight: 1.7 },
   { name: 'Line-2', color: '#FFB366', shape: [[1, 1]], weight: 1.7 },
-  { name: 'Line-3', color: '#FFFF66', shape: [[1, 1, 1]], weight: 1.0 },
+  { name: 'Square-2', color: '#66B3FF', shape: [[1, 1], [1, 1]], weight: 1.7 },
+  { name: 'L-Small', color: '#FF66B3', shape: [[1, 0], [1, 1]], weight: 1.7 },
+  
+  // Board Clearing (Large/Lines) - Base Weight 1.2 (+20%)
   { name: 'Line-4', color: '#66FF66', shape: [[1, 1, 1, 1]], weight: 1.2 },
   { name: 'Line-5', color: '#66FFFF', shape: [[1, 1, 1, 1, 1]], weight: 1.2 },
-  
-  // Squares
-  { name: 'Square-2', color: '#66B3FF', shape: [[1, 1], [1, 1]], weight: 1.7 },
   { name: 'Square-3', color: '#B366FF', shape: [[1, 1, 1], [1, 1, 1], [1, 1, 1]], weight: 1.2 },
   
-  // L-shapes
-  { name: 'L-Small', color: '#FF66B3', shape: [[1, 0], [1, 1]], weight: 1.7 },
+  // Standard - Base Weight 1.0
+  { name: 'Line-3', color: '#FFFF66', shape: [[1, 1, 1]], weight: 1.0 },
   { name: 'L-Big', color: '#FF9999', shape: [[1, 0, 0], [1, 0, 0], [1, 1, 1]], weight: 1.0 },
-  
-  // Classic Polyominoes
   { name: 'T-Shape', color: '#FF33FF', shape: [[1, 1, 1], [0, 1, 0]], weight: 1.0 },
   { name: 'Z-Shape', color: '#99FF99', shape: [[1, 1, 0], [0, 1, 1]], weight: 1.0 },
   { name: 'S-Shape', color: '#99FF99', shape: [[0, 1, 1], [1, 1, 0]], weight: 1.0 },
@@ -74,37 +69,93 @@ RAW_BLOCK_DEFS.forEach(def => {
 export const BLOCK_DEFS = PROCESSED_BLOCKS;
 export const BOARD_SIZE = 8;
 
-export function generateUniqueInventory(count: number): BlockPiece[] {
-  const selected: BlockPiece[] = [];
-  const usedShapes = new Set<string>();
-
-  while (selected.length < count) {
-    const totalWeight = BLOCK_DEFS.reduce((sum, block) => sum + block.weight, 0);
-    let random = Math.random() * totalWeight;
-    
-    let chosenBlock: Omit<BlockPiece, 'id'> | null = null;
-    for (const block of BLOCK_DEFS) {
-      if (random < block.weight) {
-        chosenBlock = block;
-        break;
-      }
-      random -= block.weight;
-    }
-
-    if (chosenBlock) {
-      const s = shapeToString(chosenBlock.shape);
-      if (!usedShapes.has(s)) {
-        selected.push({
-          ...chosenBlock,
-          id: Math.random().toString(36).substring(2, 11)
-        });
-        usedShapes.add(s);
+export function generateUniqueInventory(count: number, board?: string[][]): BlockPiece[] {
+  // Logic: 
+  // 1. Calculate how "full" the board is.
+  // 2. Adjust weights: if board > 60% full, boost small blocks even more.
+  // 3. Ensure at least one block can be placed.
+  
+  let filledRatio = 0;
+  if (board) {
+    let filled = 0;
+    for (let r = 0; r < BOARD_SIZE; r++) {
+      for (let c = 0; c < BOARD_SIZE; c++) {
+        if (board[r][c] !== "empty") filled++;
       }
     }
-    
-    if (usedShapes.size >= BLOCK_DEFS.length) break;
+    filledRatio = filled / (BOARD_SIZE * BOARD_SIZE);
   }
-  return selected;
+
+  const getAdjustedBlocks = () => {
+    return BLOCK_DEFS.map(b => {
+      let adjWeight = b.weight;
+      // If board is getting full, significantly boost small blocks (Useful category)
+      if (filledRatio > 0.6 && b.weight >= 1.7) {
+        adjWeight *= 2.5; 
+      }
+      // If board is very empty, slightly boost large blocks to get them out of the way
+      if (filledRatio < 0.2 && b.weight === 1.2) {
+        adjWeight *= 1.5;
+      }
+      return { ...b, adjWeight };
+    });
+  };
+
+  const attemptGeneration = (): BlockPiece[] => {
+    const selected: BlockPiece[] = [];
+    const usedShapes = new Set<string>();
+    const adjustedBlocks = getAdjustedBlocks();
+
+    while (selected.length < count) {
+      const totalWeight = adjustedBlocks.reduce((sum, b) => sum + b.adjWeight, 0);
+      let random = Math.random() * totalWeight;
+      
+      let chosen: Omit<BlockPiece, 'id'> | null = null;
+      for (const block of adjustedBlocks) {
+        if (random < block.adjWeight) {
+          chosen = block;
+          break;
+        }
+        random -= block.adjWeight;
+      }
+
+      if (chosen) {
+        const s = shapeToString(chosen.shape);
+        if (!usedShapes.has(s)) {
+          selected.push({
+            ...chosen,
+            id: Math.random().toString(36).substring(2, 11)
+          });
+          usedShapes.add(s);
+        }
+      }
+      if (usedShapes.size >= BLOCK_DEFS.length) break;
+    }
+    return selected;
+  };
+
+  // Ensure at least one block fits if board is provided
+  let result = attemptGeneration();
+  if (board) {
+    let placeable = false;
+    let attempts = 0;
+    while (!placeable && attempts < 10) {
+      placeable = result.some(block => {
+        for (let r = 0; r < BOARD_SIZE; r++) {
+          for (let c = 0; c < BOARD_SIZE; c++) {
+            if (canFit(board, block.shape, r, c)) return true;
+          }
+        }
+        return false;
+      });
+      if (!placeable) {
+        result = attemptGeneration();
+      }
+      attempts++;
+    }
+  }
+
+  return result;
 }
 
 export function getBlockSize(shape: BlockShape): number {

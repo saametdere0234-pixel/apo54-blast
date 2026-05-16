@@ -43,8 +43,6 @@ export default function Apo54BlastPage() {
     };
 
     const handlePointerUp = () => {
-      // If drag ends without placement (returned), it just becomes null
-      // BlockInventory handles making it visible again because it's still in the inventory state
       setDraggedBlock(null);
       setDragPosition(null);
       setSnapCoord(null);
@@ -64,7 +62,8 @@ export default function Apo54BlastPage() {
     const initialBoard = Array(BOARD_SIZE).fill(null).map(() => Array(BOARD_SIZE).fill("empty"));
     setBoard(initialBoard);
     setScore(0);
-    setInventory(generateUniqueInventory(3));
+    // Initial inventory doesn't need board check but we pass it anyway for consistency
+    setInventory(generateUniqueInventory(3, initialBoard));
     setGameState("playing");
     setDraggedBlock(null);
     setDragPosition(null);
@@ -74,10 +73,10 @@ export default function Apo54BlastPage() {
     setBoard(newBoard);
     setScore(prev => prev + points);
     
-    // Only filter out from inventory upon successful placement
     const newInventory = inventory.filter(b => b.id !== blockId);
     if (newInventory.length === 0) {
-      const replenished = generateUniqueInventory(3);
+      // Pass the current board state to bias the selection towards placeable blocks
+      const replenished = generateUniqueInventory(3, newBoard);
       setInventory(replenished);
       checkGameOver(newBoard, replenished);
     } else {
@@ -169,7 +168,7 @@ export default function Apo54BlastPage() {
             left: dragPosition.x, 
             top: dragPosition.y, 
             transform: 'translate(-50%, -50%)',
-            opacity: snapCoord ? 0 : 1 // High sensitivity: hide if snapped
+            opacity: snapCoord ? 0 : 1
           }}
         >
           <div className="flex flex-col gap-[3px]">
