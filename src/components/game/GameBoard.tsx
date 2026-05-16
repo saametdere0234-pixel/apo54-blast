@@ -21,8 +21,10 @@ export function GameBoard({ board, draggedBlock, dragPosition, onPlaced, onSnapC
   const hoverPosRef = useRef(hoverPos);
 
   // Synchronize local visual board with parent board state
+  // Crucially, we only clear the animation state when the actual source of truth (props.board) matches
   useEffect(() => {
     setVisualBoard(board);
+    setClearingLines(null);
   }, [board]);
 
   useEffect(() => {
@@ -37,13 +39,11 @@ export function GameBoard({ board, draggedBlock, dragPosition, onPlaced, onSnapC
     }
 
     const rect = gridRef.current.getBoundingClientRect();
-    // Accounting for 12px padding on each side (p-3 = 12px) and 3px gaps between cells
     const padding = 24; 
     const gapsTotal = (BOARD_SIZE - 1) * 3;
     const cellWidth = (rect.width - padding - gapsTotal) / BOARD_SIZE;
     const cellHeight = (rect.height - padding - gapsTotal) / BOARD_SIZE;
 
-    // Center the block calculation based on the cursor position
     const x = dragPosition.x - rect.left - 12 - (draggedBlock.shape[0].length * (cellWidth + 3) / 2);
     const y = dragPosition.y - rect.top - 12 - (draggedBlock.shape.length * (cellHeight + 3) / 2);
 
@@ -85,7 +85,6 @@ export function GameBoard({ board, draggedBlock, dragPosition, onPlaced, onSnapC
     const interimBoard = visualBoard.map(row => [...row]);
     const shape = block.shape;
     
-    // Fill interimBoard with the new block immediately for visual consistency
     for (let r = 0; r < shape.length; r++) {
       for (let c = 0; c < shape[r].length; c++) {
         if (shape[r][c] === 1) {
@@ -113,17 +112,14 @@ export function GameBoard({ board, draggedBlock, dragPosition, onPlaced, onSnapC
       setClearingLines({ rows: rowsToClear, cols: colsToClear });
       points += linesCleared * 10 * linesCleared;
 
-      // Finalize the clear after the animation plays (animation duration is 0.4s)
       setTimeout(() => {
         const finalBoard = interimBoard.map(row => [...row]);
         rowsToClear.forEach(r => finalBoard[r] = Array(BOARD_SIZE).fill("empty"));
         colsToClear.forEach(c => finalBoard.forEach(r => r[c] = "empty"));
         
-        // Update local state first to prevent the "reappearing" glitch
+        // We set the local visual state AND notify the parent.
+        // The clearingLines flag will be reset in the useEffect once props.board updates.
         setVisualBoard(finalBoard);
-        setClearingLines(null);
-        
-        // Notify parent to update the source of truth
         onPlaced(finalBoard, points, block.id);
       }, 400); 
     } else {
