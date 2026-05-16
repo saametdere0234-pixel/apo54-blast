@@ -25,7 +25,7 @@ function shapeToString(shape: number[][]): string {
   return shape.map(row => row.join('')).join('|');
 }
 
-// Weights: 
+// Weights based on user request:
 // - Useful (small/versatile): 1.7 (Base 1.0 + 70%)
 // - Board Clearing (large/lines): 1.2 (Base 1.0 + 20%)
 // - Standard: 1.0
@@ -78,7 +78,6 @@ export function generateUniqueInventory(count: number): BlockPiece[] {
   const selected: BlockPiece[] = [];
   const usedShapes = new Set<string>();
 
-  // Use weighted random selection
   while (selected.length < count) {
     const totalWeight = BLOCK_DEFS.reduce((sum, block) => sum + block.weight, 0);
     let random = Math.random() * totalWeight;
@@ -103,7 +102,6 @@ export function generateUniqueInventory(count: number): BlockPiece[] {
       }
     }
     
-    // Safety break to prevent infinite loop if count is too high relative to unique shapes
     if (usedShapes.size >= BLOCK_DEFS.length) break;
   }
   return selected;

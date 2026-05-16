@@ -16,20 +16,17 @@ export function BlockInventory({ blocks, activeDragId, onDragStart }: BlockInven
   const [removingId, setRemovingId] = useState<string | null>(null);
 
   useEffect(() => {
-    // If we have fewer blocks than before (a block was placed), handle the slide-out
     if (blocks.length < displayBlocks.length) {
       const removed = displayBlocks.find(db => !blocks.find(b => b.id === db.id));
       if (removed) {
         setRemovingId(removed.id);
-        // Wait for animation before actually updating the list
         const timer = setTimeout(() => {
           setDisplayBlocks(blocks);
           setRemovingId(null);
-        }, 300); // Duration of the slide/shrink animation
+        }, 300);
         return () => clearTimeout(timer);
       }
     } else {
-      // For additions or initial loads, sync immediately
       setDisplayBlocks(blocks);
     }
   }, [blocks, displayBlocks.length]);
@@ -50,7 +47,7 @@ export function BlockInventory({ blocks, activeDragId, onDragStart }: BlockInven
             onPointerDown={(e) => handleStartDrag(e, block)}
             className={cn(
               "p-4 rounded-2xl cursor-grab active:cursor-grabbing transition-all duration-300 flex items-center justify-center transform hover:bg-white/5 animate-pop-in shrink-0",
-              (isDragging || isRemoving) && "opacity-0 scale-0 w-0 h-0 p-0 pointer-events-none -mx-4"
+              (isDragging || isRemoving) && "opacity-0 scale-0 w-0 h-0 p-0 pointer-events-none -mx-4 overflow-hidden"
             )}
             style={{ 
               transitionProperty: 'all',

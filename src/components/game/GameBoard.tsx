@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useMemo, useEffect, useRef } from "react";
@@ -33,18 +34,24 @@ export function GameBoard({ board, draggedBlock, dragPosition, onPlaced, onSnapC
     const cellWidth = (rect.width - 24) / BOARD_SIZE; 
     const cellHeight = (rect.height - 24) / BOARD_SIZE;
 
+    // Centered exactly on cursor
     const x = dragPosition.x - rect.left - (draggedBlock.shape[0].length * cellWidth / 2);
     const y = dragPosition.y - rect.top - (draggedBlock.shape.length * cellHeight / 2);
 
+    // Rounding for snap, with increased sensitivity (larger radius)
     const r = Math.round(y / cellHeight);
     const c = Math.round(x / cellWidth);
 
-    if (r >= 0 && r <= BOARD_SIZE - draggedBlock.shape.length && 
-        c >= 0 && c <= BOARD_SIZE - draggedBlock.shape[0].length) {
-      setHoverPos({ r, c });
+    // Bounds check with slight buffer for sensitivity
+    if (r >= -0.5 && r <= BOARD_SIZE - draggedBlock.shape.length + 0.5 && 
+        c >= -0.5 && c <= BOARD_SIZE - draggedBlock.shape[0].length + 0.5) {
+      const validR = Math.max(0, Math.min(BOARD_SIZE - draggedBlock.shape.length, Math.round(r)));
+      const validC = Math.max(0, Math.min(BOARD_SIZE - draggedBlock.shape[0].length, Math.round(c)));
+      
+      setHoverPos({ r: validR, c: validC });
       onSnapChange?.({
-        x: rect.left + 12 + (c * (cellWidth + 3)), 
-        y: rect.top + 12 + (r * (cellHeight + 3))
+        x: rect.left + 12 + (validC * (cellWidth + 3)), 
+        y: rect.top + 12 + (validR * (cellHeight + 3))
       });
     } else {
       setHoverPos(null);
@@ -71,7 +78,6 @@ export function GameBoard({ board, draggedBlock, dragPosition, onPlaced, onSnapC
     const interimBoard = board.map(row => [...row]);
     const shape = block.shape;
     
-    // 1. Show the block on the board immediately
     for (let r = 0; r < shape.length; r++) {
       for (let c = 0; c < shape[r].length; c++) {
         if (shape[r][c] === 1) {
@@ -80,7 +86,6 @@ export function GameBoard({ board, draggedBlock, dragPosition, onPlaced, onSnapC
       }
     }
 
-    // 2. Calculate lines to clear
     const rowsToClear: number[] = [];
     const colsToClear: number[] = [];
     for (let r = 0; r < BOARD_SIZE; r++) {
@@ -96,11 +101,9 @@ export function GameBoard({ board, draggedBlock, dragPosition, onPlaced, onSnapC
     const linesCleared = rowsToClear.length + colsToClear.length;
 
     if (linesCleared > 0) {
-      // 3. Set clearing state for animation
       setClearingLines({ rows: rowsToClear, cols: colsToClear });
       points += linesCleared * 10 * linesCleared;
 
-      // Wait for blast animation before final callback
       setTimeout(() => {
         const finalBoard = interimBoard.map(row => [...row]);
         rowsToClear.forEach(r => finalBoard[r] = Array(BOARD_SIZE).fill("empty"));
