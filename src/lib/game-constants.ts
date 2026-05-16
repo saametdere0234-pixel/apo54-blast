@@ -8,24 +8,33 @@ export interface BlockPiece {
   name: string;
 }
 
-export const BLOCK_DEFS: Omit<BlockPiece, 'id'>[] = [
+function rotateMatrix(matrix: number[][]): number[][] {
+  const rows = matrix.length;
+  const cols = matrix[0].length;
+  const rotated = Array(cols).fill(null).map(() => Array(rows).fill(0));
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      rotated[c][rows - 1 - r] = matrix[r][c];
+    }
+  }
+  return rotated;
+}
+
+function shapeToString(shape: number[][]): string {
+  return shape.map(row => row.join('')).join('|');
+}
+
+const RAW_BLOCK_DEFS: { name: string; color: string; shape: number[][] }[] = [
   { name: '1x1', color: '#FF6666', shape: [[1]] },
-  { name: '2x1', color: '#FFB366', shape: [[1, 1]] },
-  { name: '1x2', color: '#FFB366', shape: [[1], [1]] },
-  { name: '3x1', color: '#FFFF66', shape: [[1, 1, 1]] },
-  { name: '1x3', color: '#FFFF66', shape: [[1], [1], [1]] },
-  { name: '4x1', color: '#66FF66', shape: [[1, 1, 1, 1]] },
-  { name: '1x4', color: '#66FF66', shape: [[1], [1], [1], [1]] },
-  { name: '5x1', color: '#66FFFF', shape: [[1, 1, 1, 1, 1]] },
-  { name: '1x5', color: '#66FFFF', shape: [[1], [1], [1], [1], [1]] },
-  { name: '2x2', color: '#66B3FF', shape: [[1, 1], [1, 1]] },
-  { name: '3x3', color: '#B366FF', shape: [[1, 1, 1], [1, 1, 1], [1, 1, 1]] },
-  { name: '3x2', color: '#44CCFF', shape: [[1, 1, 1], [1, 1, 1]] },
-  { name: '2x3', color: '#44CCFF', shape: [[1, 1], [1, 1], [1, 1]] },
+  { name: 'Line-2', color: '#FFB366', shape: [[1, 1]] },
+  { name: 'Line-3', color: '#FFFF66', shape: [[1, 1, 1]] },
+  { name: 'Line-4', color: '#66FF66', shape: [[1, 1, 1, 1]] },
+  { name: 'Line-5', color: '#66FFFF', shape: [[1, 1, 1, 1, 1]] },
+  { name: 'Square-2', color: '#66B3FF', shape: [[1, 1], [1, 1]] },
+  { name: 'Square-3', color: '#B366FF', shape: [[1, 1, 1], [1, 1, 1], [1, 1, 1]] },
+  { name: 'Rect-3x2', color: '#44CCFF', shape: [[1, 1, 1], [1, 1, 1]] },
   { name: 'L-Small', color: '#FF66B3', shape: [[1, 0], [1, 1]] },
-  { name: 'L-Small-Opp', color: '#FF66B3', shape: [[0, 1], [1, 1]] },
   { name: 'L-Big', color: '#FF9999', shape: [[1, 0, 0], [1, 0, 0], [1, 1, 1]] },
-  { name: 'L-Big-Opp', color: '#FF9999', shape: [[0, 0, 1], [0, 0, 1], [1, 1, 1]] },
   { name: 'Z', color: '#99FF99', shape: [[1, 1, 0], [0, 1, 1]] },
   { name: 'Z-Opp', color: '#99FF99', shape: [[0, 1, 1], [1, 1, 0]] },
   { name: 'Half-Plus', color: '#FFA500', shape: [[1, 1, 1], [0, 1, 0]] },
@@ -34,26 +43,46 @@ export const BLOCK_DEFS: Omit<BlockPiece, 'id'>[] = [
   { name: 'C-Shape', color: '#FFFF33', shape: [[1, 1], [1, 0], [1, 1]] },
   { name: 'Stairs', color: '#33FF33', shape: [[1, 0, 0], [1, 1, 0], [0, 1, 1]] },
   { name: 'Corner-Big', color: '#FF3333', shape: [[1, 1, 1], [1, 0, 0], [1, 0, 0]] },
-  { name: 'Cross3-Left', color: '#AD66FF', shape: [[1, 0, 0], [0, 1, 0], [0, 0, 1]] },
-  { name: 'Cross3-Right', color: '#AD66FF', shape: [[0, 0, 1], [0, 1, 0], [1, 0, 0]] },
-  { name: 'Cross2-Left', color: '#AD66FF', shape: [[1, 0], [0, 1]] },
-  { name: 'Cross2-Right', color: '#AD66FF', shape: [[0, 1], [1, 0]] },
+  { name: 'Diagonal-3', color: '#AD66FF', shape: [[1, 0, 0], [0, 1, 0], [0, 0, 1]] },
+  { name: 'Diagonal-2', color: '#AD66FF', shape: [[1, 0], [0, 1]] },
 ];
 
+// Generate all rotations and remove duplicates
+const PROCESSED_BLOCKS: Omit<BlockPiece, 'id'>[] = [];
+const seenShapes = new Set<string>();
+
+RAW_BLOCK_DEFS.forEach(def => {
+  let currentShape = def.shape;
+  for (let i = 0; i < 4; i++) {
+    const shapeStr = shapeToString(currentShape);
+    if (!seenShapes.has(shapeStr)) {
+      PROCESSED_BLOCKS.push({
+        name: `${def.name}-r${i}`,
+        color: def.color,
+        shape: currentShape
+      });
+      seenShapes.add(shapeStr);
+    }
+    currentShape = rotateMatrix(currentShape);
+  }
+});
+
+export const BLOCK_DEFS = PROCESSED_BLOCKS;
 export const BOARD_SIZE = 8;
 
 export function generateUniqueInventory(count: number): BlockPiece[] {
   const shuffled = [...BLOCK_DEFS].sort(() => 0.5 - Math.random());
   const selected: BlockPiece[] = [];
-  const usedNames = new Set<string>();
+  const usedShapes = new Set<string>();
 
   for (const def of shuffled) {
-    if (selected.length < count && !usedNames.has(def.name)) {
+    const s = shapeToString(def.shape);
+    if (selected.length < count && !usedShapes.has(s)) {
       selected.push({
         ...def,
-        id: Math.random().toString(36).substr(2, 9)
+        id: Math.random().toString(36).substring(2, 11)
       });
-      usedNames.add(def.name);
+      usedShapes.add(s);
     }
   }
   return selected;
