@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { GameBoard } from "@/components/game/GameBoard";
 import { ScoreBoard } from "@/components/game/ScoreBoard";
 import { BlockInventory } from "@/components/game/BlockInventory";
@@ -161,17 +161,17 @@ export default function Apo54BlastPage() {
 
       {draggedBlock && dragPosition && (
         <div 
-          className="fixed pointer-events-none z-[100] transition-transform duration-75"
+          className="fixed pointer-events-none z-[100]"
           style={{ 
-            left: snapCoord ? snapCoord.x : dragPosition.x, 
-            top: snapCoord ? snapCoord.y : dragPosition.y, 
-            transform: snapCoord ? 'none' : 'translate(-50%, -150%) scale(1.1)',
+            left: dragPosition.x, 
+            top: dragPosition.y, 
+            transform: 'translate(-50%, -50%)',
             opacity: snapCoord ? 0 : 1 // Hide floating block if snapped to board (let board handle it)
           }}
         >
-          <div className="flex flex-col gap-[2px]">
+          <div className="flex flex-col gap-[3px]">
             {draggedBlock.shape.map((row, rIdx) => (
-              <div key={rIdx} className="flex gap-[2px]">
+              <div key={rIdx} className="flex gap-[3px]">
                 {row.map((cell, cIdx) => (
                   <div
                     key={cIdx}

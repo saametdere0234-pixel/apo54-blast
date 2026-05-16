@@ -34,10 +34,9 @@ export function GameBoard({ board, draggedBlock, dragPosition, onPlaced, onSnapC
     const cellWidth = (rect.width - 24) / BOARD_SIZE; 
     const cellHeight = (rect.height - 24) / BOARD_SIZE;
 
-    // Use the same offset calculation as the floating block in page.tsx for alignment
-    // Target is centered and lifted above finger
+    // Centered exactly on cursor
     const x = dragPosition.x - rect.left - (draggedBlock.shape[0].length * cellWidth / 2);
-    const y = dragPosition.y - rect.top - (draggedBlock.shape.length * cellHeight / 2) - (cellHeight * 1.5);
+    const y = dragPosition.y - rect.top - (draggedBlock.shape.length * cellHeight / 2);
 
     const r = Math.round(y / cellHeight);
     const c = Math.round(x / cellWidth);
@@ -45,9 +44,9 @@ export function GameBoard({ board, draggedBlock, dragPosition, onPlaced, onSnapC
     if (r >= 0 && r <= BOARD_SIZE - draggedBlock.shape.length && 
         c >= 0 && c <= BOARD_SIZE - draggedBlock.shape[0].length) {
       setHoverPos({ r, c });
-      // Calculate global screen coords of the top-left cell of the snap
+      // Signal we have a valid snap
       onSnapChange?.({
-        x: rect.left + 12 + (c * (cellWidth + 3)), // accounting for padding/gap
+        x: rect.left + 12 + (c * (cellWidth + 3)), 
         y: rect.top + 12 + (r * (cellHeight + 3))
       });
     } else {
@@ -165,7 +164,7 @@ export function GameBoard({ board, draggedBlock, dragPosition, onPlaced, onSnapC
                 )}
                 style={{ 
                   backgroundColor: cell !== "empty" ? cell : (isGhost ? draggedBlock?.color : undefined),
-                  opacity: isGhost ? (placementPreview.fits ? 1 : 0.3) : 1, // Full opacity when snap fits
+                  opacity: isGhost ? (placementPreview.fits ? 1 : 0.3) : 1,
                   boxShadow: isGhost && placementPreview.fits ? `0 0 30px ${draggedBlock?.color}` : undefined,
                   transform: isGhost && placementPreview.fits ? 'scale(1.02)' : 'none'
                 }}
