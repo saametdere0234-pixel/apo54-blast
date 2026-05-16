@@ -109,7 +109,7 @@ export function GameBoard({ board, draggedBlock, dragPosition, onPlaced, onSnapC
       setClearingLines({ rows: rowsToClear, cols: colsToClear });
       points += linesCleared * 10 * linesCleared;
 
-      // Finalize the clear after the animation plays
+      // Finalize the clear after the animation plays (animation duration is 0.4s)
       setTimeout(() => {
         const finalBoard = interimBoard.map(row => [...row]);
         rowsToClear.forEach(r => finalBoard[r] = Array(BOARD_SIZE).fill("empty"));
@@ -117,7 +117,7 @@ export function GameBoard({ board, draggedBlock, dragPosition, onPlaced, onSnapC
         
         onPlaced(finalBoard, points, block.id);
         setClearingLines(null);
-      }, 500); // Slightly longer for the staggered effect
+      }, 400); 
     } else {
       onPlaced(interimBoard, points, block.id);
     }
@@ -174,9 +174,6 @@ export function GameBoard({ board, draggedBlock, dragPosition, onPlaced, onSnapC
             const isAboutToClear = placementPreview.rowsToClear.includes(rIdx) || placementPreview.colsToClear.includes(cIdx);
             const isActuallyClearing = clearingLines && (clearingLines.rows.includes(rIdx) || clearingLines.cols.includes(cIdx));
             
-            // Stagger the animation delay based on tile distance (tile-by-tile effect)
-            const staggerDelay = isActuallyClearing ? (rIdx + cIdx) * 0.03 : 0;
-
             return (
               <div
                 key={`${rIdx}-${cIdx}`}
@@ -189,10 +186,9 @@ export function GameBoard({ board, draggedBlock, dragPosition, onPlaced, onSnapC
                 )}
                 style={{ 
                   backgroundColor: cell !== "empty" ? cell : (isGhost ? draggedBlock?.color : undefined),
-                  opacity: isGhost ? (placementPreview.fits ? 1 : 0.3) : (isActuallyClearing ? 1 : 1),
+                  opacity: isGhost ? (placementPreview.fits ? 1 : 0.3) : 1,
                   boxShadow: (isGhost && placementPreview.fits) || isActuallyClearing ? `0 0 30px ${draggedBlock?.color || cell}` : undefined,
                   transform: isGhost && placementPreview.fits ? 'scale(1.02)' : 'none',
-                  animationDelay: isActuallyClearing ? `${staggerDelay}s` : undefined
                 }}
               />
             );
