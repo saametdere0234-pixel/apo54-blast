@@ -51,8 +51,28 @@
   50% { opacity: 0.6; filter: brightness(2) drop-shadow(0 0 10px rgba(255, 165, 0, 0.8)); }
 }
 
+@keyframes pop-in {
+  0% { transform: scale(0.6); opacity: 0; }
+  70% { transform: scale(1.1); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes blast-out {
+  0% { transform: scale(1); filter: brightness(2); }
+  50% { transform: scale(1.2); filter: brightness(4); }
+  100% { transform: scale(0.8); opacity: 0; filter: brightness(10); }
+}
+
 .animate-flash {
   animation: flash 0.3s ease-in-out infinite;
+}
+
+.animate-pop-in {
+  animation: pop-in 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+.animate-blast-out {
+  animation: blast-out 0.4s ease-out forwards;
 }
 
 .blast-shadow {

@@ -1,4 +1,3 @@
-
 "use client";
 
 import React from "react";
@@ -26,8 +25,8 @@ export function BlockInventory({ blocks, activeDragId, onDragStart }: BlockInven
             key={block.id}
             onPointerDown={(e) => handleStartDrag(e, block)}
             className={cn(
-              "p-4 rounded-2xl cursor-grab active:cursor-grabbing transition-all duration-300 flex items-center justify-center transform hover:bg-white/5",
-              isDragging && "opacity-40 grayscale-[0.5]"
+              "p-4 rounded-2xl cursor-grab active:cursor-grabbing transition-all duration-300 flex items-center justify-center transform hover:bg-white/5 animate-pop-in",
+              isDragging && "opacity-0 scale-0"
             )}
           >
             <BlockPreview shape={block.shape} color={block.color} size={18} />
