@@ -16,25 +16,15 @@ interface GameBoardProps {
 export function GameBoard({ board, draggedBlock, dragPosition, onPlaced, onSnapChange }: GameBoardProps) {
   const [hoverPos, setHoverPos] = useState<{ r: number; c: number } | null>(null);
   const [clearingLines, setClearingLines] = useState<{ rows: number[], cols: number[] } | null>(null);
+  const [clearingColors, setClearingColors] = useState<Record<string, string>>({});
   const [visualBoard, setVisualBoard] = useState<string[][]>(board);
   const gridRef = useRef<HTMLDivElement>(null);
   const hoverPosRef = useRef(hoverPos);
 
-  // Synchronize local visual board with parent board state
+  // Sync visual board with prop board only when NOT in the middle of a clear animation
   useEffect(() => {
-    // We only force a sync if we're not currently in the middle of a clear animation
-    // OR if the board prop has actually changed from what we locally know.
     if (!clearingLines) {
       setVisualBoard(board);
-    } else {
-      // If we are clearing, we check if the new board prop is actually "cleared"
-      const isCleared = clearingLines.rows.every(r => board[r].every(c => c === "empty")) &&
-                       clearingLines.cols.every(c => board.every(r => r[c] === "empty"));
-      
-      if (isCleared) {
-        setVisualBoard(board);
-        setClearingLines(null);
-      }
     }
   }, [board, clearingLines]);
 
@@ -50,16 +40,22 @@ export function GameBoard({ board, draggedBlock, dragPosition, onPlaced, onSnapC
     }
 
     const rect = gridRef.current.getBoundingClientRect();
-    const padding = 24; 
-    const gapsTotal = (BOARD_SIZE - 1) * 3;
-    const cellWidth = (rect.width - padding - gapsTotal) / BOARD_SIZE;
-    const cellHeight = (rect.height - padding - gapsTotal) / BOARD_SIZE;
+    const padding = 12; // Adjusted for p-3 (12px)
+    const gap = 3;
+    const availableWidth = rect.width - (padding * 2);
+    const availableHeight = rect.height - (padding * 2);
+    const cellWidth = (availableWidth - (BOARD_SIZE - 1) * gap) / BOARD_SIZE;
+    const cellHeight = (availableHeight - (BOARD_SIZE - 1) * gap) / BOARD_SIZE;
 
-    const x = dragPosition.x - rect.left - 12 - (draggedBlock.shape[0].length * (cellWidth + 3) / 2);
-    const y = dragPosition.y - rect.top - 12 - (draggedBlock.shape.length * (cellHeight + 3) / 2);
+    // Center the block on the pointer
+    const blockWidth = draggedBlock.shape[0].length * (cellWidth + gap) - gap;
+    const blockHeight = draggedBlock.shape.length * (cellHeight + gap) - gap;
 
-    const r = Math.round(y / (cellHeight + 3));
-    const c = Math.round(x / (cellWidth + 3));
+    const x = dragPosition.x - rect.left - padding - (blockWidth / 2);
+    const y = dragPosition.y - rect.top - padding - (blockHeight / 2);
+
+    const r = Math.round(y / (cellHeight + gap));
+    const c = Math.round(x / (cellWidth + gap));
 
     if (r >= -0.5 && r <= BOARD_SIZE - draggedBlock.shape.length + 0.5 && 
         c >= -0.5 && c <= BOARD_SIZE - draggedBlock.shape[0].length + 0.5) {
@@ -68,8 +64,8 @@ export function GameBoard({ board, draggedBlock, dragPosition, onPlaced, onSnapC
       
       setHoverPos({ r: validR, c: validC });
       onSnapChange?.({
-        x: rect.left + 12 + (validC * (cellWidth + 3)) + (cellWidth / 2), 
-        y: rect.top + 12 + (validR * (cellHeight + 3)) + (cellHeight / 2)
+        x: rect.left + padding + (validC * (cellWidth + gap)) + (cellWidth / 2), 
+        y: rect.top + padding + (validR * (cellHeight + gap)) + (cellHeight / 2)
       });
     } else {
       setHoverPos(null);
@@ -96,6 +92,7 @@ export function GameBoard({ board, draggedBlock, dragPosition, onPlaced, onSnapC
     const interimBoard = visualBoard.map(row => [...row]);
     const shape = block.shape;
     
+    // 1. Physically place the block on our interim representation
     for (let r = 0; r < shape.length; r++) {
       for (let c = 0; c < shape[r].length; c++) {
         if (shape[r][c] === 1) {
@@ -103,8 +100,8 @@ export function GameBoard({ board, draggedBlock, dragPosition, onPlaced, onSnapC
         }
       }
     }
-    setVisualBoard(interimBoard);
 
+    // 2. Identify clearing lines
     const rowsToClear: number[] = [];
     const colsToClear: number[] = [];
     for (let r = 0; r < BOARD_SIZE; r++) {
@@ -120,21 +117,41 @@ export function GameBoard({ board, draggedBlock, dragPosition, onPlaced, onSnapC
     const linesCleared = rowsToClear.length + colsToClear.length;
 
     if (linesCleared > 0) {
-      setClearingLines({ rows: rowsToClear, cols: colsToClear });
+      // 3. Prepare the "Ghost Explosion"
+      const colors: Record<string, string> = {};
+      const finalBoard = interimBoard.map(row => [...row]);
+
+      // Capture colors for the animation and clear the finalBoard data immediately
+      rowsToClear.forEach(r => {
+        for (let c = 0; c < BOARD_SIZE; c++) {
+          if (interimBoard[r][c] !== "empty") colors[`${r}-${c}`] = interimBoard[r][c];
+          finalBoard[r][c] = "empty";
+        }
+      });
+      colsToClear.forEach(c => {
+        for (let r = 0; r < BOARD_SIZE; r++) {
+          if (interimBoard[r][c] !== "empty") colors[`${r}-${c}`] = interimBoard[r][c];
+          finalBoard[r][c] = "empty";
+        }
+      });
+
       points += linesCleared * 10 * linesCleared;
 
-      // We wait for the animation to finish before updating the board state in the parent.
-      // The useEffect will handle the cleanup once the parent's "empty" board prop arrives.
+      // 4. Set states atomically to trigger animation while data is empty
+      setClearingColors(colors);
+      setClearingLines({ rows: rowsToClear, cols: colsToClear });
+      setVisualBoard(finalBoard); // Logic state is now empty
+      
+      // Update parent immediately so score and inventory move forward
+      onPlaced(finalBoard, points, block.id);
+
+      // 5. Cleanup animation flags after visual duration
       setTimeout(() => {
-        const finalBoard = interimBoard.map(row => [...row]);
-        rowsToClear.forEach(r => finalBoard[r] = Array(BOARD_SIZE).fill("empty"));
-        colsToClear.forEach(c => finalBoard.forEach(r => r[c] = "empty"));
-        
-        // We set the local visual state first to avoid the "reappear" flicker
-        setVisualBoard(finalBoard);
-        onPlaced(finalBoard, points, block.id);
+        setClearingLines(null);
+        setClearingColors({});
       }, 400); 
     } else {
+      setVisualBoard(interimBoard);
       onPlaced(interimBoard, points, block.id);
     }
 
@@ -186,24 +203,29 @@ export function GameBoard({ board, draggedBlock, dragPosition, onPlaced, onSnapC
       >
         {visualBoard.map((row, rIdx) => 
           row.map((cell, cIdx) => {
+            const cellKey = `${rIdx}-${cIdx}`;
             const isGhost = placementPreview.ghostCells.some(gc => gc.r === rIdx && gc.c === cIdx);
             const isAboutToClear = placementPreview.rowsToClear.includes(rIdx) || placementPreview.colsToClear.includes(cIdx);
             const isActuallyClearing = clearingLines && (clearingLines.rows.includes(rIdx) || clearingLines.cols.includes(cIdx));
+            const clearColor = clearingColors[cellKey];
             
+            // Use the "Ghost Color" if we are in the middle of a blast
+            const activeColor = isActuallyClearing ? clearColor : (cell !== "empty" ? cell : (isGhost ? draggedBlock?.color : null));
+
             return (
               <div
-                key={`${rIdx}-${cIdx}`}
+                key={cellKey}
                 className={cn(
                   "w-9 h-9 sm:w-11 sm:h-11 md:w-14 md:h-14 rounded-md transition-all duration-150 border-[0.5px] border-white/5",
-                  cell === "empty" && !isGhost ? "bg-white/[0.03]" : "blast-shadow",
+                  cell === "empty" && !isGhost && !isActuallyClearing ? "bg-white/[0.03]" : "blast-shadow",
                   isAboutToClear && !isActuallyClearing && "animate-flash brightness-150 z-10",
                   isActuallyClearing && "animate-blast-out z-20",
                   isGhost && "z-20"
                 )}
                 style={{ 
-                  backgroundColor: cell !== "empty" ? cell : (isGhost ? draggedBlock?.color : undefined),
-                  opacity: isGhost ? (placementPreview.fits ? 1 : 0.3) : (isActuallyClearing ? 1 : 1),
-                  boxShadow: (isGhost && placementPreview.fits) || isActuallyClearing ? `0 0 30px ${draggedBlock?.color || cell}` : undefined,
+                  backgroundColor: activeColor || undefined,
+                  opacity: isGhost && !placementPreview.fits ? 0.3 : 1,
+                  boxShadow: (isGhost && placementPreview.fits) || isActuallyClearing ? `0 0 30px ${activeColor}` : undefined,
                   transform: isGhost && placementPreview.fits ? 'scale(1.02)' : 'none',
                 }}
               />
