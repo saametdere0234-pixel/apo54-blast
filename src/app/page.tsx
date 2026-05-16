@@ -155,6 +155,35 @@ export default function Apo54BlastPage() {
         </div>
       </div>
 
+      {draggedBlock && dragPosition && (
+        <div 
+          className="fixed pointer-events-none z-[100] transition-transform duration-75"
+          style={{ 
+            left: dragPosition.x, 
+            top: dragPosition.y, 
+            transform: 'translate(-50%, -150%) scale(1.1)' 
+          }}
+        >
+          <div className="flex flex-col gap-[2px]">
+            {draggedBlock.shape.map((row, rIdx) => (
+              <div key={rIdx} className="flex gap-[2px]">
+                {row.map((cell, cIdx) => (
+                  <div
+                    key={cIdx}
+                    className="w-9 h-9 sm:w-11 sm:h-11 md:w-12 md:h-12 rounded-md shadow-lg"
+                    style={{ 
+                      backgroundColor: cell === 1 ? draggedBlock.color : "transparent",
+                      opacity: cell === 1 ? 0.9 : 0,
+                      boxShadow: cell === 1 ? `0 0 20px ${draggedBlock.color}` : 'none',
+                    }}
+                  />
+                ))}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {gameState === "gameover" && (
         <GameOverOverlay score={score} highScore={highScore} onRestart={startGame} />
       )}

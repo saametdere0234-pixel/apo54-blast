@@ -27,10 +27,10 @@ export function BlockInventory({ blocks, activeDragId, onDragStart }: BlockInven
             onPointerDown={(e) => handleStartDrag(e, block)}
             className={cn(
               "p-4 rounded-2xl cursor-grab active:cursor-grabbing transition-all duration-300 flex items-center justify-center transform hover:bg-white/5",
-              isDragging && "opacity-0"
+              isDragging && "opacity-40 grayscale-[0.5]"
             )}
           >
-            <BlockPreview shape={block.shape} color={block.color} size={22} />
+            <BlockPreview shape={block.shape} color={block.color} size={18} />
           </div>
         );
       })}
@@ -52,7 +52,7 @@ function BlockPreview({ shape, color, size }: { shape: number[][], color: string
                 height: size,
                 backgroundColor: cell === 1 ? color : "transparent",
                 opacity: cell === 1 ? 1 : 0,
-                boxShadow: cell === 1 ? `0 0 15px ${color}66` : 'none',
+                boxShadow: cell === 1 ? `0 0 10px ${color}66` : 'none',
                 border: cell === 1 ? '1px solid rgba(255,255,255,0.1)' : 'none'
               }}
             />

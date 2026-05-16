@@ -29,10 +29,11 @@ export function GameBoard({ board, draggedBlock, dragPosition, onPlaced }: GameB
     }
 
     const rect = gridRef.current.getBoundingClientRect();
-    const cellWidth = rect.width / BOARD_SIZE;
-    const cellHeight = rect.height / BOARD_SIZE;
+    const cellWidth = (rect.width - 24) / BOARD_SIZE; // accounting for padding/gap
+    const cellHeight = (rect.height - 24) / BOARD_SIZE;
 
-    // Detection centered slightly above cursor to avoid being covered by finger
+    // High sensitivity detection
+    // The target point is centered slightly above the finger to allow the user to see the preview
     const x = dragPosition.x - rect.left - (draggedBlock.shape[0].length * cellWidth / 2);
     const y = dragPosition.y - rect.top - (draggedBlock.shape.length * cellHeight / 2) - (cellHeight * 1.5);
 
@@ -157,7 +158,7 @@ export function GameBoard({ board, draggedBlock, dragPosition, onPlaced }: GameB
                 )}
                 style={{ 
                   backgroundColor: cell !== "empty" ? cell : (isGhost ? draggedBlock?.color : undefined),
-                  opacity: isGhost ? (placementPreview.fits ? 1 : 0.4) : 1,
+                  opacity: isGhost ? (placementPreview.fits ? 0.7 : 0.2) : 1,
                   boxShadow: isGhost && placementPreview.fits ? `0 0 30px ${draggedBlock?.color}` : undefined,
                   transform: isGhost && placementPreview.fits ? 'scale(1.02)' : 'none'
                 }}
