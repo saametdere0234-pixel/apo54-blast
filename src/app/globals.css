@@ -58,9 +58,21 @@
 }
 
 @keyframes blast-out {
-  0% { transform: scale(1); filter: brightness(2); }
-  50% { transform: scale(1.2); filter: brightness(4); }
-  100% { transform: scale(0.8); opacity: 0; filter: brightness(10); }
+  0% { 
+    transform: scale(1); 
+    filter: brightness(1) blur(0px); 
+    opacity: 1;
+  }
+  20% { 
+    transform: scale(1.15); 
+    filter: brightness(2.5) blur(0px); 
+    opacity: 1;
+  }
+  100% { 
+    transform: scale(0.3); 
+    filter: brightness(10) blur(10px); 
+    opacity: 0;
+  }
 }
 
 .animate-flash {
@@ -72,7 +84,7 @@
 }
 
 .animate-blast-out {
-  animation: blast-out 0.4s ease-out forwards;
+  animation: blast-out 0.45s cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
 
 .blast-shadow {

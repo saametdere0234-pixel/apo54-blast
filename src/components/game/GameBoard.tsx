@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useMemo, useEffect, useRef } from "react";
@@ -32,14 +31,14 @@ export function GameBoard({ board, draggedBlock, dragPosition, onPlaced, onSnapC
     }
 
     const rect = gridRef.current.getBoundingClientRect();
-    const padding = 12; // Adjusted for p-3 (12px)
+    const padding = 12; // p-3 (12px)
     const gap = 3;
     const availableWidth = rect.width - (padding * 2);
     const availableHeight = rect.height - (padding * 2);
     const cellWidth = (availableWidth - (BOARD_SIZE - 1) * gap) / BOARD_SIZE;
     const cellHeight = (availableHeight - (BOARD_SIZE - 1) * gap) / BOARD_SIZE;
 
-    // Center the block on the pointer
+    // Calculate center of block on pointer
     const blockWidth = draggedBlock.shape[0].length * (cellWidth + gap) - gap;
     const blockHeight = draggedBlock.shape.length * (cellHeight + gap) - gap;
 
@@ -84,7 +83,7 @@ export function GameBoard({ board, draggedBlock, dragPosition, onPlaced, onSnapC
     const nextBoard = board.map(row => [...row]);
     const shape = block.shape;
     
-    // 1. Physically place the block on our temporary representation to calculate clears
+    // 1. Physically place the block to calculate clears
     for (let r = 0; r < shape.length; r++) {
       for (let c = 0; c < shape[r].length; c++) {
         if (shape[r][c] === 1) {
@@ -109,7 +108,7 @@ export function GameBoard({ board, draggedBlock, dragPosition, onPlaced, onSnapC
     const linesCleared = rowsToClear.length + colsToClear.length;
 
     if (linesCleared > 0) {
-      // 3. Prepare "Ghost Explosion" colors
+      // 3. Prepare "Ghost Explosion" colors to prevent flickering
       const colors: Record<string, string> = {};
       const finalBoard = nextBoard.map(row => [...row]);
 
@@ -128,19 +127,18 @@ export function GameBoard({ board, draggedBlock, dragPosition, onPlaced, onSnapC
 
       points += linesCleared * 10 * linesCleared;
 
-      // 4. Update animation state and parent immediately
-      // The parent will now show 'empty' tiles, but the child will render 
-      // the 'clearingColors' in those empty slots for the duration of the animation.
+      // 4. Update animation state AND final board immediately
       setClearingColors(colors);
       setClearingLines({ rows: rowsToClear, cols: colsToClear });
       
       onPlaced(finalBoard, points, block.id);
 
-      // 5. Cleanup animation flags after visual duration
+      // 5. Cleanup animation flags after visual duration + 100ms buffer
+      // The extra 100ms buffer ensures parent state sync has definitively finished
       setTimeout(() => {
         setClearingLines(null);
         setClearingColors({});
-      }, 400); 
+      }, 550); 
     } else {
       onPlaced(nextBoard, points, block.id);
     }
@@ -199,8 +197,9 @@ export function GameBoard({ board, draggedBlock, dragPosition, onPlaced, onSnapC
             const isActuallyClearing = clearingLines && (clearingLines.rows.includes(rIdx) || clearingLines.cols.includes(cIdx));
             const clearColor = clearingColors[cellKey];
             
-            // The magic fix: if we are in the 'actually clearing' phase, we override the board data 
-            // (which is already 'empty') with the preserved 'clearColor' for the animation.
+            // The Ghost Explosion Strategy:
+            // Even if the prop data is "empty", if we are in the clearing phase, 
+            // we override it with the preserved color for the animation.
             const activeColor = isActuallyClearing ? clearColor : (cell !== "empty" ? cell : (isGhost ? draggedBlock?.color : null));
 
             return (
