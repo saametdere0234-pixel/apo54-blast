@@ -16,8 +16,14 @@ interface GameBoardProps {
 export function GameBoard({ board, draggedBlock, dragPosition, onPlaced, onSnapChange }: GameBoardProps) {
   const [hoverPos, setHoverPos] = useState<{ r: number; c: number } | null>(null);
   const [clearingLines, setClearingLines] = useState<{ rows: number[], cols: number[] } | null>(null);
+  const [visualBoard, setVisualBoard] = useState<string[][]>(board);
   const gridRef = useRef<HTMLDivElement>(null);
   const hoverPosRef = useRef(hoverPos);
+
+  // Synchronize local visual board with parent board state
+  useEffect(() => {
+    setVisualBoard(board);
+  }, [board]);
 
   useEffect(() => {
     hoverPosRef.current = hoverPos;
@@ -34,15 +40,12 @@ export function GameBoard({ board, draggedBlock, dragPosition, onPlaced, onSnapC
     const cellWidth = (rect.width - 24) / BOARD_SIZE; 
     const cellHeight = (rect.height - 24) / BOARD_SIZE;
 
-    // Centered exactly on cursor
     const x = dragPosition.x - rect.left - (draggedBlock.shape[0].length * cellWidth / 2);
     const y = dragPosition.y - rect.top - (draggedBlock.shape.length * cellHeight / 2);
 
-    // Rounding for snap, with increased sensitivity (larger radius)
     const r = Math.round(y / cellHeight);
     const c = Math.round(x / cellWidth);
 
-    // Bounds check with slight buffer for sensitivity
     if (r >= -0.5 && r <= BOARD_SIZE - draggedBlock.shape.length + 0.5 && 
         c >= -0.5 && c <= BOARD_SIZE - draggedBlock.shape[0].length + 0.5) {
       const validR = Math.max(0, Math.min(BOARD_SIZE - draggedBlock.shape.length, Math.round(r)));
@@ -75,9 +78,10 @@ export function GameBoard({ board, draggedBlock, dragPosition, onPlaced, onSnapC
 
   const handlePlacement = (block: BlockPiece, pos: { r: number, c: number }) => {
     const { r: startRow, c: startCol } = pos;
-    const interimBoard = board.map(row => [...row]);
+    const interimBoard = visualBoard.map(row => [...row]);
     const shape = block.shape;
     
+    // Fill interimBoard with the new block immediately for visual consistency
     for (let r = 0; r < shape.length; r++) {
       for (let c = 0; c < shape[r].length; c++) {
         if (shape[r][c] === 1) {
@@ -85,6 +89,7 @@ export function GameBoard({ board, draggedBlock, dragPosition, onPlaced, onSnapC
         }
       }
     }
+    setVisualBoard(interimBoard);
 
     const rowsToClear: number[] = [];
     const colsToClear: number[] = [];
@@ -104,6 +109,7 @@ export function GameBoard({ board, draggedBlock, dragPosition, onPlaced, onSnapC
       setClearingLines({ rows: rowsToClear, cols: colsToClear });
       points += linesCleared * 10 * linesCleared;
 
+      // Finalize the clear after the animation plays
       setTimeout(() => {
         const finalBoard = interimBoard.map(row => [...row]);
         rowsToClear.forEach(r => finalBoard[r] = Array(BOARD_SIZE).fill("empty"));
@@ -111,7 +117,7 @@ export function GameBoard({ board, draggedBlock, dragPosition, onPlaced, onSnapC
         
         onPlaced(finalBoard, points, block.id);
         setClearingLines(null);
-      }, 400);
+      }, 500); // Slightly longer for the staggered effect
     } else {
       onPlaced(interimBoard, points, block.id);
     }
@@ -162,12 +168,15 @@ export function GameBoard({ board, draggedBlock, dragPosition, onPlaced, onSnapC
         ref={gridRef}
         className="grid grid-cols-8 gap-[3px] p-3 bg-card/60 border border-white/10 rounded-xl shadow-2xl backdrop-blur-sm relative"
       >
-        {board.map((row, rIdx) => 
+        {visualBoard.map((row, rIdx) => 
           row.map((cell, cIdx) => {
             const isGhost = placementPreview.ghostCells.some(gc => gc.r === rIdx && gc.c === cIdx);
             const isAboutToClear = placementPreview.rowsToClear.includes(rIdx) || placementPreview.colsToClear.includes(cIdx);
             const isActuallyClearing = clearingLines && (clearingLines.rows.includes(rIdx) || clearingLines.cols.includes(cIdx));
             
+            // Stagger the animation delay based on tile distance (tile-by-tile effect)
+            const staggerDelay = isActuallyClearing ? (rIdx + cIdx) * 0.03 : 0;
+
             return (
               <div
                 key={`${rIdx}-${cIdx}`}
@@ -180,9 +189,10 @@ export function GameBoard({ board, draggedBlock, dragPosition, onPlaced, onSnapC
                 )}
                 style={{ 
                   backgroundColor: cell !== "empty" ? cell : (isGhost ? draggedBlock?.color : undefined),
-                  opacity: isGhost ? (placementPreview.fits ? 1 : 0.3) : 1,
+                  opacity: isGhost ? (placementPreview.fits ? 1 : 0.3) : (isActuallyClearing ? 1 : 1),
                   boxShadow: (isGhost && placementPreview.fits) || isActuallyClearing ? `0 0 30px ${draggedBlock?.color || cell}` : undefined,
-                  transform: isGhost && placementPreview.fits ? 'scale(1.02)' : 'none'
+                  transform: isGhost && placementPreview.fits ? 'scale(1.02)' : 'none',
+                  animationDelay: isActuallyClearing ? `${staggerDelay}s` : undefined
                 }}
               />
             );
