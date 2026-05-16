@@ -21,11 +21,22 @@ export function GameBoard({ board, draggedBlock, dragPosition, onPlaced, onSnapC
   const hoverPosRef = useRef(hoverPos);
 
   // Synchronize local visual board with parent board state
-  // Crucially, we only clear the animation state when the actual source of truth (props.board) matches
   useEffect(() => {
-    setVisualBoard(board);
-    setClearingLines(null);
-  }, [board]);
+    // We only force a sync if we're not currently in the middle of a clear animation
+    // OR if the board prop has actually changed from what we locally know.
+    if (!clearingLines) {
+      setVisualBoard(board);
+    } else {
+      // If we are clearing, we check if the new board prop is actually "cleared"
+      const isCleared = clearingLines.rows.every(r => board[r].every(c => c === "empty")) &&
+                       clearingLines.cols.every(c => board.every(r => r[c] === "empty"));
+      
+      if (isCleared) {
+        setVisualBoard(board);
+        setClearingLines(null);
+      }
+    }
+  }, [board, clearingLines]);
 
   useEffect(() => {
     hoverPosRef.current = hoverPos;
@@ -112,13 +123,14 @@ export function GameBoard({ board, draggedBlock, dragPosition, onPlaced, onSnapC
       setClearingLines({ rows: rowsToClear, cols: colsToClear });
       points += linesCleared * 10 * linesCleared;
 
+      // We wait for the animation to finish before updating the board state in the parent.
+      // The useEffect will handle the cleanup once the parent's "empty" board prop arrives.
       setTimeout(() => {
         const finalBoard = interimBoard.map(row => [...row]);
         rowsToClear.forEach(r => finalBoard[r] = Array(BOARD_SIZE).fill("empty"));
         colsToClear.forEach(c => finalBoard.forEach(r => r[c] = "empty"));
         
-        // We set the local visual state AND notify the parent.
-        // The clearingLines flag will be reset in the useEffect once props.board updates.
+        // We set the local visual state first to avoid the "reappear" flicker
         setVisualBoard(finalBoard);
         onPlaced(finalBoard, points, block.id);
       }, 400); 
@@ -190,7 +202,7 @@ export function GameBoard({ board, draggedBlock, dragPosition, onPlaced, onSnapC
                 )}
                 style={{ 
                   backgroundColor: cell !== "empty" ? cell : (isGhost ? draggedBlock?.color : undefined),
-                  opacity: isGhost ? (placementPreview.fits ? 1 : 0.3) : 1,
+                  opacity: isGhost ? (placementPreview.fits ? 1 : 0.3) : (isActuallyClearing ? 1 : 1),
                   boxShadow: (isGhost && placementPreview.fits) || isActuallyClearing ? `0 0 30px ${draggedBlock?.color || cell}` : undefined,
                   transform: isGhost && placementPreview.fits ? 'scale(1.02)' : 'none',
                 }}
